@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings | Vigil</title>
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --bg-elevated: #0f0f11;
+      --surface: #18181b;
+      --border: #27272a;
+      --muted: #71717a;
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --accent: #22d3ee;
+      --accent-hover: #06b6d4;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --container: min(800px, 100% - 2rem);
+      --high: #ef4444;
+      --ok: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; line-height: 1.5; }
+    .navbar { background: var(--bg-elevated); border-bottom: 1px solid var(--border); padding: 0.75rem 1.5rem; }
+    .navbar-inner { max-width: var(--container); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .brand { font-size: 1.2rem; font-weight: 700; color: var(--accent); text-decoration: none; }
+    .brand:hover { color: var(--accent-hover); }
+    main { max-width: var(--container); margin: 0 auto; padding: 2rem 1rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 { margin: 0 0 0.75rem 0; font-size: 1.1rem; color: var(--accent); }
+    .card p { margin: 0 0 0.75rem 0; color: var(--muted); font-size: 0.9rem; }
+    .form-group { margin-bottom: 0.75rem; }
+    .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; }
+    input[type="text"], input[type="password"], input[type="number"], textarea {
+      width: 100%;
+      max-width: 320px;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    button.btn {
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button.btn:hover { background: var(--accent-hover); color: #fff; }
+    button.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .msg { margin-top: 0.5rem; font-size: 0.9rem; }
+    .msg.error { color: var(--high); }
+    .msg.ok { color: var(--ok); }
+    .muted { color: var(--muted); }
+    ul { list-style: none; padding: 0; margin: 0; }
+    ul li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .log-panel { max-height: 200px; overflow: auto; background: var(--bg); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; border: 1px solid var(--border); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="brand">Vigil</a>
+      <a href="/">Back to app</a>
+    </div>
+  </nav>
+  <main>
+    <h1 style="margin:0 0 1.5rem 0;">Settings</h1>
+
+    <div class="card" id="cardUser">
+      <h2>Current user</h2>
+      <div id="userContent">Loading…</div>
+    </div>
+
+    <div class="card" id="cardDevices">
+      <h2>Devices</h2>
+      <p>Cameras and microphones detected.</p>
+      <div id="devicesContent">Loading…</div>
+    </div>
+
+    <div class="card" id="cardPassword">
+      <h2>Change password</h2>
+      <p>Requires current password. New password must meet policy.</p>
+      <div class="form-group">
+        <label for="currentPassword">Current password</label>
+        <input type="password" id="currentPassword" autocomplete="current-password" />
+      </div>
+      <div class="form-group">
+        <label for="newPassword">New password</label>
+        <input type="password" id="newPassword" autocomplete="new-password" />
+      </div>
+      <button type="button" class="btn" id="btnChangePassword">Change password</button>
+      <div id="passwordMsg" class="msg"></div>
+    </div>
+
+    <div class="card" id="cardMfa">
+      <h2>MFA</h2>
+      <p id="mfaStatusText">Loading…</p>
+      <div id="mfaSetupBlock" style="display:none;">
+        <p class="muted">After setup, enter the 6-digit code from your authenticator app.</p>
+        <div class="form-group">
+          <label for="mfaCode">Code</label>
+          <input type="text" id="mfaCode" placeholder="000000" maxlength="6" />
+        </div>
+        <button type="button" class="btn" id="btnMfaSetup">Generate secret</button>
+        <button type="button" class="btn" id="btnMfaConfirm">Confirm and enable</button>
+      </div>
+      <div id="mfaMsg" class="msg"></div>
+    </div>
+
+    <div class="card" id="cardConfig" style="display:none;">
+      <h2>Analytics config (admin)</h2>
+      <p>Loiter seconds, zones, crossing lines.</p>
+      <div class="form-group">
+        <label for="configLoiterSeconds">Loiter seconds</label>
+        <input type="number" id="configLoiterSeconds" min="1" />
+      </div>
+      <div class="form-group">
+        <label for="configLoiterZones">Loiter zones (JSON)</label>
+        <textarea id="configLoiterZones" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="configCrossingLines">Crossing lines (JSON)</label>
+        <textarea id="configCrossingLines" rows="3"></textarea>
+      </div>
+      <button type="button" class="btn" id="btnSaveConfig">Save config</button>
+      <div id="configMsg" class="msg"></div>
+    </div>
+
+    <div class="card" id="cardAudit" style="display:none;">
+      <h2>Audit log (admin)</h2>
+      <p>View, export, and verify audit log.</p>
+      <button type="button" class="btn" id="btnLoadAudit">Load audit log</button>
+      <a href="/audit_log/export" class="btn" style="display:inline-block;margin-left:0.5rem;">Export audit log (CSV)</a>
+      <button type="button" class="btn" id="btnVerifyAudit">Verify audit log</button>
+      <div id="auditVerifyResult" class="msg" style="margin-top:0.5rem;"></div>
+      <div id="auditLogContent" class="log-panel" style="margin-top:0.75rem;display:none;"></div>
+    </div>
+  </main>
+  <script>
+  (function() {
+    var API = { credentials: 'include' };
+
+    function el(id) { return document.getElementById(id); }
+
+    // Current user
+    fetch('/me', API).then(function(r) {
+      if (r.status === 401) {
+        el('userContent').innerHTML = '<p class="muted">Not signed in. <a href="/login">Sign in</a></p>';
+        return;
+      }
+      return r.json();
+    }).then(function(data) {
+      if (!data) return;
+      var html = '<p><strong>' + (data.username || '') + '</strong> · ' + (data.role || '') + '</p>';
+      if (data.password_expires_in_days != null) html += '<p class="muted">Password expires in ' + data.password_expires_in_days + ' days.</p>';
+      el('userContent').innerHTML = html;
+      if (data.role === 'admin') {
+        el('cardConfig').style.display = 'block';
+        el('cardAudit').style.display = 'block';
+      }
+    }).catch(function() {
+      el('userContent').innerHTML = '<p class="muted">Failed to load. <a href="/login">Sign in</a></p>';
+    });
+
+    // Devices
+    fetch('/api/v1/devices', API).then(function(r) { return r.json(); }).then(function(data) {
+      var cams = (data && data.cameras) || [];
+      var mics = (data && data.microphones) || [];
+      var opened = cams.filter(function(c) { return c.opened; });
+      var html = '<p>Cameras: ' + opened.length + ' usable. ' + (opened.length ? opened.map(function(c) { return c.name || c.path; }).join(', ') : 'None') + '</p>';
+      html += '<p>Microphones: ' + (mics.length || 0) + '</p>';
+      el('devicesContent').innerHTML = html;
+    }).catch(function() {
+      el('devicesContent').innerHTML = '<p class="muted">Failed to load devices.</p>';
+    });
+
+    // Change password
+    el('btnChangePassword').addEventListener('click', function() {
+      var current = (el('currentPassword').value || '').trim();
+      var newPw = (el('newPassword').value || '').trim();
+      var msg = el('passwordMsg');
+      msg.textContent = '';
+      msg.className = 'msg';
+      if (!current || !newPw) {
+        msg.textContent = 'Enter current and new password.';
+        msg.className = 'msg error';
+        return;
+      }
+      this.disabled = true;
+      fetch('/change_password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: newPw })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+          msg.textContent = 'Password changed.';
+          msg.className = 'msg ok';
+          el('currentPassword').value = '';
+          el('newPassword').value = '';
+        } else {
+          msg.textContent = data.error || 'Change failed.';
+          msg.className = 'msg error';
+        }
+      }).catch(function() {
+        msg.textContent = 'Request failed.';
+        msg.className = 'msg error';
+      }).finally(function() { el('btnChangePassword').disabled = false; });
+    });
+
+    // MFA
+    var mfaSecret = null;
+    fetch('/mfa/status', API).then(function(r) { return r.json(); }).then(function(data) {
+      el('mfaStatusText').textContent = data.enabled ? 'MFA is enabled.' : (data.available ? 'MFA is not enabled.' : 'MFA is not available.');
+      if (data.available && !data.enabled) el('mfaSetupBlock').style.display = 'block';
+    }).catch(function() {
+      el('mfaStatusText').textContent = 'Could not load MFA status.';
+    });
+
+    el('btnMfaSetup').addEventListener('click', function() {
+      var btn = this;
+      btn.disabled = true;
+      fetch('/mfa/setup', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.secret) {
+            mfaSecret = data.secret;
+            el('mfaMsg').textContent = 'Secret generated. Scan with your app, then enter code and click Confirm.';
+            el('mfaMsg').className = 'msg ok';
+          } else {
+            el('mfaMsg').textContent = data.error || 'Setup failed.';
+            el('mfaMsg').className = 'msg error';
+          }
+        })
+        .catch(function() {
+          el('mfaMsg').textContent = 'Request failed.';
+          el('mfaMsg').className = 'msg error';
+        })
+        .finally(function() { btn.disabled = false; });
+    });
+
+    el('btnMfaConfirm').addEventListener('click', function() {
+      var code = (el('mfaCode').value || '').trim().replace(/\s/g, '');
+      if (code.length !== 6) {
+        el('mfaMsg').textContent = 'Enter 6-digit code.';
+        el('mfaMsg').className = 'msg error';
+        return;
+      }
+      var btn = this;
+      btn.disabled = true;
+      fetch('/mfa/confirm', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+          el('mfaMsg').textContent = 'MFA enabled.';
+          el('mfaMsg').className = 'msg ok';
+          el('mfaSetupBlock').style.display = 'none';
+          el('mfaStatusText').textContent = 'MFA is enabled.';
+        } else {
+          el('mfaMsg').textContent = 'Invalid code or confirm failed.';
+          el('mfaMsg').className = 'msg error';
+        }
+      }).catch(function() {
+        el('mfaMsg').textContent = 'Request failed.';
+        el('mfaMsg').className = 'msg error';
+      }).finally(function() { btn.disabled = false; });
+    });
+
+    // Config (admin)
+    fetch('/config', API).then(function(r) { return r.json(); }).then(function(data) {
+      if (el('configLoiterSeconds')) el('configLoiterSeconds').value = data.loiter_seconds != null ? data.loiter_seconds : '';
+      if (el('configLoiterZones')) el('configLoiterZones').value = typeof data.loiter_zones === 'string' ? data.loiter_zones : JSON.stringify(data.loiter_zones || [], null, 2);
+      if (el('configCrossingLines')) el('configCrossingLines').value = typeof data.crossing_lines === 'string' ? data.crossing_lines : JSON.stringify(data.crossing_lines || [], null, 2);
+    }).catch(function() {});
+
+    el('btnSaveConfig').addEventListener('click', function() {
+      var msg = el('configMsg');
+      msg.textContent = '';
+      msg.className = 'msg';
+      var loiter_seconds = parseInt(el('configLoiterSeconds').value, 10);
+      var loiter_zones = el('configLoiterZones').value;
+      var crossing_lines = el('configCrossingLines').value;
+      var payload = {};
+      if (!isNaN(loiter_seconds)) payload.loiter_seconds = loiter_seconds;
+      try {
+        if (loiter_zones.trim()) payload.loiter_zones = JSON.parse(loiter_zones);
+      } catch (e) { msg.textContent = 'Loiter zones: invalid JSON'; msg.className = 'msg error'; return; }
+      try {
+        if (crossing_lines.trim()) payload.crossing_lines = JSON.parse(crossing_lines);
+      } catch (e) { msg.textContent = 'Crossing lines: invalid JSON'; msg.className = 'msg error'; return; }
+      if (Object.keys(payload).length === 0) { msg.textContent = 'No changes.'; return; }
+      this.disabled = true;
+      fetch('/config', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+          msg.textContent = 'Config saved.';
+          msg.className = 'msg ok';
+        } else {
+          msg.textContent = data.error || 'Save failed.';
+          msg.className = 'msg error';
+        }
+      }).catch(function() {
+        msg.textContent = 'Request failed.';
+        msg.className = 'msg error';
+      }).finally(function() { el('btnSaveConfig').disabled = false; });
+    });
+
+    // Audit log (admin)
+    el('btnLoadAudit').addEventListener('click', function() {
+      var content = el('auditLogContent');
+      content.style.display = 'block';
+      content.textContent = 'Loading…';
+      fetch('/audit_log?limit=200', API).then(function(r) {
+        if (r.status === 403) throw new Error('Forbidden');
+        return r.json();
+      }).then(function(rows) {
+        content.textContent = '';
+        (rows || []).forEach(function(row) {
+          var line = [row.timestamp, row.user_id, row.action, row.resource, row.details].filter(Boolean).join(' | ');
+          content.appendChild(document.createTextNode(line + '\n'));
+        });
+        if (content.textContent === '') content.textContent = 'No entries.';
+      }).catch(function() {
+        content.textContent = 'Failed to load or forbidden.';
+      });
+    });
+
+    el('btnVerifyAudit').addEventListener('click', function() {
+      var res = el('auditVerifyResult');
+      res.textContent = 'Verifying…';
+      fetch('/audit_log/verify', API).then(function(r) { return r.json(); }).then(function(data) {
+        res.textContent = 'Verified: ' + (data.verified || 0) + ', Mismatched: ' + (data.mismatched || 0) + ', Total: ' + (data.total || 0);
+        res.className = 'msg ' + (data.mismatched > 0 ? 'error' : 'ok');
+      }).catch(function() {
+        res.textContent = 'Verify failed.';
+        res.className = 'msg error';
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

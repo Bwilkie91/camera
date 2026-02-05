@@ -1,0 +1,58 @@
+# Proactive Surveillance — edge-first config (2026-style)
+# All processing local; no cloud. Mac/GPU friendly.
+# Optimization: see docs/CONFIG_AND_OPTIMIZATION.md (reid threshold, loiter_duration_sec, anomaly_high).
+
+database:
+  path: ""   # default: proactive.db next to package
+
+# Camera / source (for live pipeline; leave empty if only parsing logs)
+camera:
+  source: 0   # 0 = default USB, or rtsp://... or path to video
+  width: 640
+  height: 480
+
+# Parser: log format and paths
+parser:
+  log_path: ""   # optional: path to raw log file
+  encoding: utf-8
+
+# ReID: person persistence
+reid:
+  enabled: true
+  similarity_threshold: 0.85   # cosine > this = same person
+  embedding_backend: auto      # auto | osnet | resnet | stub
+
+# Predictor: intent & threat
+predictor:
+  loiter_duration_sec: 300     # > 5 min loitering escalates
+  night_start_hour: 22
+  night_end_hour: 6
+  anomaly_high: 0.5
+  use_isolation_forest: true
+
+# Deterrence: proactive response (optional)
+deterrence:
+  enabled: false              # set true to allow auto actions
+  threat_thresholds:
+    low: 20
+    medium: 40
+    high: 70
+  script_path: ""             # e.g. ./scripts/flash_lights.sh
+  webhook_url: ""             # IFTTT / HomeKit webhook
+  voice_warning: false
+  voice_text: "You are being recorded. Leave the area now."
+
+# Multimodal: audio (if mic available)
+audio:
+  enabled: false
+  # YamNet-lite or librosa: glass_break, aggressive_voice, footsteps
+  # Fuse with vision threat_score
+
+# Visualization & export
+viz:
+  detections_per_hour_path: detections_per_hour.png
+  timeline_path: timeline.png
+  report_md_path: surveillance_summary_report.md
+
+# Retention (days)
+retention_days: 90

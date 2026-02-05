@@ -1,0 +1,51 @@
+# Vigil Upgrade — 2026-era detection + ReID + intent (local/edge)
+
+# Model: drop-in replacement for YOLOv8n
+model:
+  name: "auto"          # auto | yolov8n.pt | yolo11n.pt | yolo26n.pt
+  use_onnx: false       # set true and set onnx_path if you exported to ONNX
+  onnx_path: ""
+  imgsz: 640
+  conf: 0.25
+  iou: 0.45
+
+# Tracker (ByteTrack or BoT-SORT)
+tracker:
+  config: "bytetrack.yaml"
+  persist: true
+
+# Camera / source
+camera:
+  source: 0             # 0 = default USB, or rtsp://... or path to video
+  width: 640
+  height: 480
+
+# Database (same schema as proactive)
+database:
+  path: ""              # default: vigil_upgrade.db
+
+# ReID: persistent person memory
+reid:
+  enabled: true
+  similarity_threshold: 0.85
+
+# Predictor: loitering / intent
+predictor:
+  loiter_duration_sec: 300
+  night_start_hour: 22
+  night_end_hour: 6
+  anomaly_high: 0.5
+  use_isolation_forest: true
+
+# Alerts: escalate to script/webhook/voice
+alerts:
+  escalate: false       # set true to call proactive deterrence
+deterrence:
+  enabled: false
+  threat_thresholds:
+    low: 20
+    medium: 40
+    high: 70
+  script_path: ""
+  webhook_url: ""
+  voice_warning: false

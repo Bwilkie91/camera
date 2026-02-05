@@ -1,0 +1,43 @@
+# Enterprise Surveillance Dashboard — SOC-style (2026)
+# Data source, thresholds, theme, polling.
+# Optimization: see docs/CONFIG_AND_OPTIMIZATION.md (polling.interval_ms, api_get_data_limit).
+
+# Data: CSV path, SQLite DB, or live Vigil API
+data:
+  source: "api"   # csv | sqlite | api
+  csv_path: "surveillance_log_clean.csv"
+  sqlite_path: "surveillance.db"
+  sqlite_table: "ai_data"
+  # When source=api: pull from Vigil Flask backend (events + ai_data for analytics)
+  api_base_url: "http://localhost:5000"
+  api_get_data_limit: 10000
+  # Optional: Vigil UI URL for "Play at moment" links (defaults to api_base_url)
+  # vigil_ui_url: "http://localhost:5000"
+  # Optional: detection_events from proactive/vigil_upgrade
+  # sqlite_table_events: "detection_events"
+
+# Polling (near-real-time); 15s = fresher, 60s = lighter load
+polling:
+  interval_ms: 15000   # 15 seconds (optimized for freshness)
+  enabled: true
+
+# Theme
+theme:
+  default: "dark"      # dark | light
+  # Bootstrap theme names: CYBORG (dark), DARKLY (dark), FLATLY (light), SLATE (dark)
+  dark_theme: "CYBORG"
+  light_theme: "FLATLY"
+  accent_threat: "#dc3545"
+  accent_anomaly: "#fd7e14"
+  accent_ok: "#20c997"
+
+# Thresholds for alerts / severity coloring
+thresholds:
+  threat_high: 50
+  threat_medium: 20
+  anomaly_high: 0.5
+
+# Export
+export:
+  max_rows: 50000
+  allowed_formats: ["csv", "json"]

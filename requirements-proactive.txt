@@ -1,0 +1,28 @@
+# Proactive surveillance pipeline (edge-first, Mac/GPU)
+# Install: pip install -r requirements-proactive.txt
+
+# Core (likely already installed with main app)
+pandas>=2.0.0
+numpy>=1.24.0
+PyYAML>=6.0
+
+# DB (stdlib sqlite3; no extra pkg)
+# Visualization
+matplotlib>=3.7.0
+
+# ML: intent/anomaly
+scikit-learn>=1.3.0
+
+# ReID & inference (Mac MPS supported)
+torch>=2.0.0
+torchvision>=0.15.0
+# Optional: person ReID (OSNet) — install separately if desired
+# pip install torchreid
+# torchreid  # uncomment when using
+
+# Optional: TTS for voice deterrence
+# pyttsx3>=2.90
+
+# Optional: audio (multimodal)
+# librosa>=0.10.0
+# tensorflow or onnxruntime  # for YamNet-lite if needed

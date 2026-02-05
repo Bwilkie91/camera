@@ -1,0 +1,43 @@
+# Secrets and local env
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.eggs/
+
+# Node
+node_modules/
+
+# Databases and recordings (large; regenerate locally)
+*.db
+*.db-shm
+*.db-wal
+recording_*.avi
+recording_*.mp4
+
+# Model weights (download or export locally)
+*.pt
+*.onnx
+*.engine
+models/*.task
+
+# Generated / local data
+notable_screenshots/
+*.png
+*.csv
+!config/*.csv
+!dashboard/**/*.csv
+
+# IDE and OS
+.DS_Store
+*.swp
+*.swo
+Thumbs.db
+
+# Build artifacts (can rebuild)
+frontend/dist/

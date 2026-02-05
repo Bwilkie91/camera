@@ -1,0 +1,288 @@
+/* Enterprise SOC dashboard — color scheme, design & placement (2026) */
+
+:root {
+  /* Primary palette */
+  --vigil-sidebar-bg: #0f172a;
+  --vigil-sidebar-border: #1e293b;
+  --vigil-sidebar-hover: #1e293b;
+  --vigil-sidebar-active: #2563eb;
+  --vigil-sidebar-active-bg: rgba(37, 99, 235, 0.15);
+  --vigil-header-bg: #1e293b;
+  --vigil-header-border: #334155;
+  --vigil-main-bg: #0f172a;
+  --vigil-card-bg: #1e293b;
+  --vigil-card-border: #334155;
+  /* Accents */
+  --vigil-primary: #2563eb;
+  --vigil-threat: #dc2626;
+  --vigil-anomaly: #d97706;
+  --vigil-success: #0d9488;
+  --vigil-muted: #64748b;
+  --vigil-text: #e2e8f0;
+  --vigil-text-muted: #94a3b8;
+}
+
+/* App container */
+#app-container {
+  background: var(--vigil-main-bg);
+  min-height: 100vh;
+}
+
+/* Sidebar: fixed width, slate theme */
+#sidebar-container {
+  background: var(--vigil-sidebar-bg) !important;
+  border-right: 1px solid var(--vigil-sidebar-border);
+  min-height: 100vh;
+  width: 220px;
+}
+
+#sidebar-container .fs-5 {
+  color: var(--vigil-text);
+  padding: 1rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--vigil-sidebar-border);
+  margin-bottom: 0.75rem;
+}
+
+#sidebar-container .nav-link {
+  color: var(--vigil-text-muted);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.125rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+#sidebar-container .nav-link:hover {
+  color: var(--vigil-text);
+  background: var(--vigil-sidebar-hover);
+}
+
+#sidebar-container .nav-link.active {
+  color: #fff;
+  background: var(--vigil-sidebar-active-bg);
+  border-left: 3px solid var(--vigil-primary);
+  padding-left: calc(0.75rem - 3px);
+}
+
+/* Header */
+.vigil-header {
+  background: var(--vigil-header-bg) !important;
+  border-bottom: 1px solid var(--vigil-header-border);
+  padding: 0.5rem 1.5rem;
+}
+
+.vigil-header .navbar-brand {
+  color: var(--vigil-text) !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.vigil-header .form-control {
+  background: #0f172a;
+  border-color: var(--vigil-card-border);
+  color: var(--vigil-text);
+}
+
+.vigil-header .form-control::placeholder {
+  color: var(--vigil-muted);
+}
+
+.vigil-header .form-control:focus {
+  border-color: var(--vigil-primary);
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.2);
+}
+
+/* Main content area */
+#page-content {
+  padding: 1.25rem 1.5rem 2rem;
+  background: var(--vigil-main-bg);
+}
+
+/* Filters panel */
+#filters-container .card {
+  background: var(--vigil-card-bg);
+  border: 1px solid var(--vigil-card-border);
+  border-radius: 0.5rem;
+}
+
+#filters-container .card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--vigil-card-border);
+  color: var(--vigil-text);
+  font-weight: 600;
+  padding: 0.625rem 0.75rem;
+}
+
+#filters-container .card-body {
+  padding: 0.75rem;
+  color: var(--vigil-text-muted);
+}
+
+#filters-container .form-label {
+  color: var(--vigil-text-muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+#filters-container .form-control,
+#filters-container .Select-control {
+  background: #0f172a;
+  border-color: var(--vigil-card-border);
+  color: var(--vigil-text);
+  font-size: 0.875rem;
+}
+
+#filters-container .btn-primary {
+  background: var(--vigil-primary);
+  border-color: var(--vigil-primary);
+  margin-top: 0.25rem;
+}
+
+/* Page cards */
+#page-content .card {
+  background: var(--vigil-card-bg);
+  border: 1px solid var(--vigil-card-border);
+  border-radius: 0.5rem;
+}
+
+#page-content .card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--vigil-card-border);
+  color: var(--vigil-text);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+}
+
+#page-content .card-body {
+  color: var(--vigil-text-muted);
+  padding: 1rem;
+}
+
+/* KPI cards with left accent */
+.kpi-card {
+  background: var(--vigil-card-bg) !important;
+  border: 1px solid var(--vigil-card-border);
+  border-radius: 0.5rem;
+  border-left: 4px solid var(--vigil-primary);
+}
+
+.kpi-card.card-loiter {
+  border-left-color: var(--vigil-anomaly);
+}
+
+.kpi-card.card-threat {
+  border-left-color: var(--vigil-threat);
+}
+
+.kpi-card.card-success {
+  border-left-color: var(--vigil-success);
+}
+
+.kpi-card .card-title {
+  color: var(--vigil-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-card .card-body {
+  padding: 1rem;
+}
+
+.kpi-card h4 {
+  color: var(--vigil-text);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Table */
+.dash-table-container {
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner {
+  border: 1px solid var(--vigil-card-border);
+}
+
+.dash-table-container .dash-spreadsheet-container th {
+  background: var(--vigil-header-bg) !important;
+  color: var(--vigil-text) !important;
+  font-weight: 600;
+  padding: 0.625rem 0.75rem;
+  border-color: var(--vigil-card-border) !important;
+}
+
+.dash-table-container .dash-spreadsheet-container td {
+  background: var(--vigil-card-bg) !important;
+  color: var(--vigil-text-muted);
+  padding: 0.5rem 0.75rem;
+  border-color: var(--vigil-card-border) !important;
+}
+
+.dash-table-container .dash-spreadsheet-container tr:hover td {
+  background: var(--vigil-sidebar-hover) !important;
+}
+
+/* Modal */
+.modal-content {
+  background: var(--vigil-card-bg);
+  border: 1px solid var(--vigil-card-border);
+  border-radius: 0.5rem;
+}
+
+.modal-header {
+  border-bottom-color: var(--vigil-card-border);
+}
+
+.modal-header .modal-title {
+  color: var(--vigil-text);
+}
+
+.modal-body {
+  color: var(--vigil-text-muted);
+}
+
+.modal-footer {
+  border-top-color: var(--vigil-card-border);
+}
+
+/* Page titles */
+#page-content h5 {
+  color: var(--vigil-text);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* Buttons */
+.btn-outline-primary {
+  border-color: var(--vigil-primary);
+  color: var(--vigil-primary);
+}
+
+.btn-outline-primary:hover {
+  background: var(--vigil-primary);
+  border-color: var(--vigil-primary);
+  color: #fff;
+}
+
+/* Focus */
+button:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--vigil-primary);
+  outline-offset: 2px;
+}
+
+/* Plotly chart container */
+.js-plotly-plot .plotly .main-svg {
+  border-radius: 0.375rem;
+}
+
+/* Date picker in dark context */
+.DateInput_input {
+  background: #0f172a !important;
+  color: var(--vigil-text) !important;
+  border-color: var(--vigil-card-border) !important;
+}

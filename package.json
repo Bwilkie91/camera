@@ -1,0 +1,19 @@
+{
+  "name": "vigil-edge-security",
+  "private": true,
+  "description": "Vigil — Edge Video Security. AI-powered surveillance platform.",
+  "scripts": {
+    "start": "python app.py",
+    "start:react": "USE_REACT_APP=1 python app.py",
+    "frontend": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "install:frontend": "cd frontend && npm install",
+    "sms": "node index.js"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "twilio": "^5.12.0"
+  }
+}

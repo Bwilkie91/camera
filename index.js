@@ -8,11 +8,15 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const accountSid = 'YOUR_TWILIO_ACCOUNT_SID';
-const authToken = 'YOUR_TWILIO_AUTH_TOKEN';
-const twilioPhone = 'YOUR_TWILIO_PHONE_NUMBER';
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
 
-const client = twilio(accountSid, authToken);
+if (!accountSid || !authToken || !twilioPhone) {
+  console.warn('Twilio credentials missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER.');
+}
+
+const client = (accountSid && authToken) ? twilio(accountSid, authToken) : null;
 
 // Store SMS preferences in memory (for demo)
 const userPreferences = {};
@@ -25,10 +29,11 @@ app.post('/sms-preferences', (req, res) => {
   res.send('Preferences saved');
 });
 
-// Endpoint to send an SMS alert (simulate triggering alert)
+// Endpoint to send an SMS alert
 app.post('/send-sms-alert', async (req, res) => {
   const { phone, message } = req.body;
   if (!phone || !message) return res.status(400).send('Missing phone or message');
+  if (!client || !twilioPhone) return res.status(503).send('SMS not configured. Set Twilio env vars.');
 
   try {
     await client.messages.create({

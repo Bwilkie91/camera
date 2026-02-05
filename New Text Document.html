@@ -104,6 +104,66 @@
     color: #00b3ff;
     margin-bottom: 0.5rem;
   }
+  .export-section {
+    max-width: 960px;
+    margin: 2rem auto;
+    background: #1c1c1c;
+    border-radius: 10px;
+    padding: 1.25rem;
+    box-shadow: 0 0 15px #007bb8aa;
+  }
+  .export-section h2 {
+    color: #00b3ff;
+    margin: 0 0 1rem 0;
+    font-size: 1.25rem;
+  }
+  .export-categories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .export-categories label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    padding: 0.4rem 0;
+  }
+  .export-categories input[type=checkbox] {
+    margin: 0;
+    transform: scale(1.2);
+    cursor: pointer;
+  }
+  .sort-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .sort-row label {
+    font-weight: 600;
+  }
+  .sort-row select {
+    background: #222;
+    color: #eee;
+    border: 1px solid #00b3ff;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .export-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .export-actions .btn {
+    margin-top: 0;
+    width: auto;
+  }
 </style>
 </head>
 <body>
@@ -168,6 +228,31 @@
 <div style="max-width: 960px; margin: 0 auto;">
   <button class="btn" id="exportBtn" aria-label="Export filtered surveillance logs">Export Logs</button>
 </div>
+
+<section class="export-section" aria-label="Export and data">
+  <h2>📦 Export &amp; Data</h2>
+  <p style="margin: 0 0 1rem 0; color: #aaa;">Download AI data, verify integrity, recordings, map and analytics. Select categories and sort order below.</p>
+  <div class="export-categories" role="group" aria-label="Data categories to export">
+    <label><input type="checkbox" id="exp-ai" checked /> 🤖 AI data</label>
+    <label><input type="checkbox" id="exp-integrity" checked /> ✅ Verify integrity</label>
+    <label><input type="checkbox" id="exp-recordings" checked /> 🎬 Recordings</label>
+    <label><input type="checkbox" id="exp-map" checked /> 🗺️ Map</label>
+    <label><input type="checkbox" id="exp-analytics" checked /> 📊 Analytics</label>
+  </div>
+  <div class="sort-row">
+    <label for="exportSort">Sort by:</label>
+    <select id="exportSort" aria-label="Sort export data by">
+      <option value="date-desc">Date (newest first)</option>
+      <option value="date-asc">Date (oldest first)</option>
+      <option value="category">Category</option>
+      <option value="type">Type</option>
+    </select>
+  </div>
+  <div class="export-actions">
+    <button class="btn" id="downloadExportBtn" aria-label="Download selected data">📥 Download selected</button>
+    <button class="btn" id="verifyIntegrityBtn" aria-label="Verify data integrity">🔐 Verify integrity</button>
+  </div>
+</section>
 
 <script>
   function triggerDevice(device) {
@@ -256,10 +341,25 @@
 
   const logContainer = document.getElementById('logContainer');
 
+  function getSortCompare() {
+    const sortBy = (document.getElementById('exportSort') || {}).value || 'date-desc';
+    return (a, b) => {
+      switch (sortBy) {
+        case 'date-asc':
+          return new Date(a.date + ' ' + a.timestamp) - new Date(b.date + ' ' + b.timestamp);
+        case 'category':
+          return (a.categoryName || '').localeCompare(b.categoryName || '');
+        case 'type':
+          return (a.category || '').localeCompare(b.category || '');
+        default:
+          return new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp);
+      }
+    };
+  }
+
   function renderLogs() {
     const selectedCats = surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
-    const filtered = logs.filter(log => selectedCats.includes(log.category))
-      .sort((a,b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+    const filtered = logs.filter(log => selectedCats.includes(log.category)).sort(getSortCompare());
 
     if(filtered.length === 0) {
       logContainer.textContent = 'No logs for selected categories.';
@@ -277,10 +377,12 @@
     cb.addEventListener('change', renderLogs);
   });
 
+  const exportSortEl = document.getElementById('exportSort');
+  if (exportSortEl) exportSortEl.addEventListener('change', renderLogs);
+
   document.getElementById('exportBtn').addEventListener('click', () => {
     const selectedCats = surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
-    const filteredLogs = logs.filter(log => selectedCats.includes(log.category))
-      .sort((a,b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+    const filteredLogs = logs.filter(log => selectedCats.includes(log.category)).sort(getSortCompare());
     if(filteredLogs.length === 0) {
       alert('No logs to export for selected categories.');
       return;
@@ -297,6 +399,72 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  });
+
+  function getExportSelected() {
+    return {
+      ai: document.getElementById('exp-ai')?.checked ?? true,
+      integrity: document.getElementById('exp-integrity')?.checked ?? true,
+      recordings: document.getElementById('exp-recordings')?.checked ?? true,
+      map: document.getElementById('exp-map')?.checked ?? true,
+      analytics: document.getElementById('exp-analytics')?.checked ?? true
+    };
+  }
+
+  document.getElementById('downloadExportBtn').addEventListener('click', () => {
+    const sel = getExportSelected();
+    const parts = [];
+    const sortCompare = getSortCompare();
+    if (sel.ai) {
+      const aiEntries = document.querySelectorAll('#aiLogContainer .log-entry');
+      let aiText = 'AI Detection Log\n' + new Date().toISOString() + '\n\n';
+      aiEntries.forEach(e => { aiText += e.textContent + '\n'; });
+      parts.push({ name: 'ai_data', content: aiText });
+    }
+    if (sel.integrity) {
+      parts.push({ name: 'integrity_checksum', content: 'SHA-256 (simulated): ' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + '\nGenerated: ' + new Date().toISOString() + '\n' });
+    }
+    if (sel.recordings) {
+      parts.push({ name: 'recordings_index', content: 'Recordings index (simulated)\nLast 7 days: 24 clips\nFormat: AVI, H.264\nGenerated: ' + new Date().toISOString() + '\n' });
+    }
+    if (sel.map) {
+      parts.push({ name: 'map_waypoints', content: 'Map/waypoints export (simulated)\nCameras: 6\nEvents: ' + logs.length + '\nGenerated: ' + new Date().toISOString() + '\n' });
+    }
+    if (sel.analytics) {
+      const selectedCats = surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
+      const filtered = logs.filter(log => selectedCats.includes(log.category)).sort(sortCompare);
+      let analyticsText = 'Analytics export\nGenerated: ' + new Date().toISOString() + '\n\n';
+      analyticsText += filtered.map(log => `${log.date} ${log.timestamp} | ${log.category} | ${log.issue}`).join('\n');
+      parts.push({ name: 'analytics', content: analyticsText });
+    }
+    if (parts.length === 0) {
+      alert('Select at least one category under Export & Data.');
+      return;
+    }
+    const combined = parts.map(p => '=== ' + p.name.toUpperCase() + ' ===\n' + p.content).join('\n\n');
+    const blob = new Blob([combined], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'export_data_' + new Date().toISOString().slice(0, 10) + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('verifyIntegrityBtn').addEventListener('click', () => {
+    const sel = getExportSelected();
+    const checks = [];
+    if (sel.ai) checks.push('AI data');
+    if (sel.integrity) checks.push('Integrity hashes');
+    if (sel.recordings) checks.push('Recordings index');
+    if (sel.map) checks.push('Map data');
+    if (sel.analytics) checks.push('Analytics');
+    if (checks.length === 0) {
+      alert('Select at least one category to verify.');
+      return;
+    }
+    alert('Integrity verification (simulated)\n\nChecked: ' + checks.join(', ') + '\nResult: OK – no tampering detected.');
   });
 </script>
 

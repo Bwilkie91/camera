@@ -1,0 +1,30 @@
+# Optional dependencies for Vigil (install with: pip install -r requirements-optional.txt)
+# Cross-platform (Mac, Linux, Windows). Skip RPi.GPIO / flirpy on non-Pi/non-Jetson.
+
+# Cameras from YAML (CAMERA_SOURCES=yaml); dashboard and config
+PyYAML>=6.0
+
+# Audio / speech (ENABLE_AUDIO=1)
+PyAudio>=0.2.14
+SpeechRecognition>=3.10.0
+
+# Redis for multi-instance WebSocket (REDIS_URL)
+redis>=5.0.0
+
+# TOTP MFA (ENABLE_MFA=1)
+pyotp>=2.9.0
+
+# ONVIF PTZ (ONVIF_HOST, ONVIF_USER, ONVIF_PASS)
+onvif-zeep>=0.2.12
+
+# MQTT alerts (ALERT_MQTT_BROKER)
+paho-mqtt>=2.0.0
+
+# Wi-Fi monitor mode (ENABLE_WIFI_SNIFF=1) — optional, can require libpcap
+# scapy>=2.5.0
+
+# TensorFlow-free emotion (EMOTION_BACKEND=emotiefflib)
+# emotiefflib>=1.0.0
+
+# Security audit (run: pip audit or scripts/audit-deps.sh)
+pip-audit>=2.0.0

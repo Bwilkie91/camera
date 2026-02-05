@@ -1,0 +1,39 @@
+# Vigil Edge Video Security — Docker Compose
+# Deploy: docker compose up
+# Config: cameras.yaml or .env (CAMERA_SOURCES, etc.)
+# Volumes: config and snapshots (plus data and recordings).
+# Data & recordings: use the Export view in the UI (or /export_data, /recordings/<name>/export).
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-5000}:5000"
+    env_file:
+      - .env
+    environment:
+      - PORT=5000
+      - DATA_DIR=/app/data
+      - RECORDINGS_DIR=/app/recordings
+      - NOTABLE_SCREENSHOTS_DIR=/app/snapshots
+      - CONFIG_DIR=/app/config
+    volumes:
+      - vigil_data:/app/data
+      - vigil_recordings:/app/recordings
+      - vigil_config:/app/config
+      - vigil_snapshots:/app/snapshots
+    restart: unless-stopped
+    # For NVIDIA GPU: uncomment below and use image with CUDA, e.g. nvidia/cuda:12.2-runtime-ubuntu22.04 base
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  vigil_data:       # DB and app-generated files
+  vigil_recordings: # Recording clips (see Export for downloads)
+  vigil_config:    # cameras.yaml, config.json (edit without rebuild)
+  vigil_snapshots: # Notable behavior screenshots

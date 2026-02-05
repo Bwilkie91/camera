@@ -1,0 +1,3018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vigil | Edge Video Security</title>
+  <style>
+    :root {
+      --bg: #08090a;
+      --bg-elevated: #0c0d0f;
+      --surface: #111214;
+      --surface-hover: #181a1d;
+      --border: #1e2124;
+      --border-strong: #2a2d32;
+      --muted: #6b7280;
+      --text: #f4f5f6;
+      --text-secondary: #9ca3af;
+      --accent: #14b8a6;
+      --accent-hover: #0d9488;
+      --accent-dim: rgba(20, 184, 166, 0.12);
+      --high: #dc2626;
+      --medium: #d97706;
+      --low: #4b5563;
+      --ok: #16a34a;
+      --warn: #ca8a04;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.4);
+      --container: min(1200px, 100% - 1.5rem);
+    }
+    * { box-sizing: border-box; }
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .navbar {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .navbar-inner {
+      max-width: var(--container);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .brand:hover { color: var(--accent-hover); }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+    .nav-links a.active, .nav-links a[href="#"] { color: var(--accent); }
+    .nav-links .login-link {
+      margin-left: 0.5rem;
+      background: var(--accent);
+      color: #000;
+    }
+    .nav-links .login-link:hover { background: var(--accent-hover); color: #fff; }
+    .nav-links .auto-login-link {
+      margin-right: 0.5rem;
+      background: var(--accent);
+      color: #000;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .nav-links .auto-login-link:hover { background: var(--accent-hover); color: #fff; }
+    main {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      padding: 1.5rem 0;
+    }
+    .hero h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 0.35rem 0;
+      letter-spacing: -0.02em;
+    }
+    .hero .tagline {
+      color: var(--muted);
+      font-size: 1rem;
+      margin: 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
+    }
+    .card:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .card h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.05rem;
+      color: var(--accent);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card h3 .live-pill {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      background: var(--high);
+      color: #fff;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .stream-viewer {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: var(--radius-sm);
+      background: #000;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--border);
+    }
+    .stream-viewer img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .stream-viewer .btn-fullscreen {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      z-index: 2;
+    }
+    .stream-viewer .btn-fullscreen:hover { background: rgba(0,0,0,0.8); }
+    .stream-viewer:focus { outline: none; }
+    .stream-viewer:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+    .stream-wrap { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-sm); background: #000; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid var(--border); }
+    .stream-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    ul li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    ul li:last-child { border-bottom: none; }
+    .log-panel {
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--bg);
+      padding: 0.75rem;
+      border-radius: var(--radius-sm);
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+    .log-entry { padding: 0.25rem 0; border-bottom: 1px solid var(--border); }
+    .log-entry:last-child { border-bottom: none; }
+    button.btn {
+      margin-top: 0.5rem;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-weight: 600;
+      padding: 0.6rem 1.25rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      width: 100%;
+      font-size: 0.9rem;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button.btn:hover { background: var(--accent-hover); color: #fff; }
+    button.btn:active { transform: scale(0.98); }
+    button.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.btn-sm {
+      width: auto;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.85rem;
+      margin-right: 0.35rem;
+      margin-top: 0.35rem;
+    }
+    .audio-toggle { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); }
+    .audio-toggle label { cursor: pointer; }
+    .snapshots {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .snapshots img {
+      width: 88px;
+      height: 50px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+    }
+    .video-downloads { margin-top: 0.5rem; font-size: 0.85rem; }
+    .export-recordings-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .export-recordings-toolbar label { font-size: 0.85rem; font-weight: 500; }
+    .export-recordings-toolbar input[type="search"],
+    .export-recordings-toolbar select { padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.85rem; }
+    .export-recordings-toolbar input[type="search"] { min-width: 12rem; }
+    #exportRecordingsList { max-height: 320px; overflow-y: auto; }
+    .video-downloads a {
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      margin: 2px 8px 2px 0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .video-downloads a:hover { background: var(--surface-hover); text-decoration: none; }
+    h2 {
+      color: var(--text);
+      font-size: 1.1rem;
+      margin: 0 0 0.75rem 0;
+      font-weight: 600;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .section h2 { margin-top: 0; border-bottom-color: var(--border-strong); }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; }
+    .badge-high { background: var(--high); color: #fff; }
+    .badge-medium { background: var(--medium); color: #000; }
+    .badge-low { background: var(--low); color: #e4e4e7; }
+    .status-ok { color: var(--ok); }
+    .status-warn { color: var(--warn); }
+    .status-error { color: var(--high); }
+    .filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }
+    .filters-row select {
+      padding: 0.4rem 0.6rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+    .event-row {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-row .ts { color: var(--muted); font-family: monospace; font-size: 0.85rem; }
+    .event-row .type { color: var(--accent); font-weight: 500; }
+    .empty-state { color: var(--muted); font-size: 0.9rem; padding: 1.25rem; text-align: center; }
+    .muted { color: var(--muted); }
+    .activity-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: center;
+      padding: 1rem 0;
+    }
+    .activity-strip span { font-size: 0.95rem; }
+    .activity-strip strong { color: var(--text); }
+    .footer {
+      max-width: var(--container);
+      margin: 2rem auto 0;
+      padding: 1.5rem 1rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; gap: 1rem; }
+      .hero h1 { font-size: 1.4rem; }
+    }
+    .nav-recording-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-right: 0.5rem;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+    .nav-recording-indicator.recording-on {
+      background: rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+      animation: nav-rec-blink 1.2s ease-in-out infinite;
+    }
+    .nav-recording-indicator.recording-off {
+      opacity: 0.5;
+      color: var(--muted);
+      background: var(--surface);
+    }
+    .nav-recording-indicator .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .nav-recording-indicator.recording-on .rec-dot {
+      animation: nav-rec-glow 1.2s ease-in-out infinite;
+    }
+    @keyframes nav-rec-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    @keyframes nav-rec-glow {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor, 0 0 12px currentColor; }
+      50% { opacity: 0.7; box-shadow: 0 0 4px currentColor; }
+    }
+    .nav-mic-indicator {
+      display: inline-flex;
+      align-items: center;
+      font-size: 1rem;
+      margin-right: 0.5rem;
+      padding: 0.2rem 0.35rem;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      line-height: 1;
+      cursor: default;
+    }
+    .nav-mic-indicator.mic-on { background: var(--accent-dim); border-color: var(--accent); }
+    .nav-mic-indicator.mic-off { opacity: 0.6; }
+    .activity-tabs { display: flex; gap: 2px; margin-left: 0.75rem; }
+    .activity-tab {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .activity-tab:hover { color: var(--text); background: var(--surface); }
+    .activity-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .activity-panel { margin-top: 0.5rem; }
+    .export-subsection { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .export-subsection:first-of-type { margin-top: 1rem; }
+    .live-feed-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 768px) { .live-feed-top { grid-template-columns: 1fr; } }
+    .live-feed-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .live-feed-box .live-feed-heading {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .live-feed-box .live-feed-heading .live-pill { font-size: 0.65rem; }
+    .live-feed-box .live-feed-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+    }
+    .live-feed-box .live-feed-frame .empty-state { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; margin: 0; }
+    .live-feed-box .live-feed-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .live-feed-explanation {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .live-feed-explanation h2 { font-size: 1rem; margin: 0 0 0.5rem 0; color: var(--text); border: none; padding: 0; }
+    .live-feed-explanation .what-seen { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+    .live-feed-explanation .what-happening { font-size: 0.85rem; color: var(--muted); }
+    .live-feed-explanation ul { margin: 0.35rem 0 0 1rem; padding: 0; list-style: disc; }
+    .live-feed-explanation li { margin: 0.2rem 0; }
+    .live-feed-activity-wrap { border-bottom: 1px solid var(--border); background: var(--bg); }
+    .live-feed-activity-tabs { display: flex; gap: 2px; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .live-feed-activity-tab { padding: 0.35rem 0.6rem; font-size: 0.75rem; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 500; }
+    .live-feed-activity-tab:hover { color: var(--text); background: var(--surface-hover); }
+    .live-feed-activity-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .live-feed-activity-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+    .live-feed-activity-toolbar label { color: var(--muted); margin-right: 0.15rem; }
+    .live-feed-activity-toolbar select { padding: 0.2rem 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.75rem; }
+    .live-feed-activity { max-height: 280px; overflow-y: auto; padding: 0.5rem; }
+    .live-feed-activity-heading { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .live-feed-activity-item { display: flex; gap: 0.5rem; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; line-height: 1.3; }
+    .live-feed-activity-item:last-child { border-bottom: none; }
+    .live-feed-activity-time { flex-shrink: 0; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+    .live-feed-activity-msg { color: var(--text-secondary); }
+    .live-feed-activity-msg .badge { margin-right: 0.25rem; }
+    .live-feed-panel { display: none; }
+    .live-feed-panel.active { display: block; }
+    .live-feed-ai-row { padding: 0.75rem; margin-bottom: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.75rem; }
+    .live-feed-ai-row .ai-row-time { color: var(--accent); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem; }
+    .live-feed-ai-row .ai-row-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 0.5rem 1rem; align-items: start; }
+    .live-feed-ai-row .ai-stat { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; padding: 0.35rem 0.5rem; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid transparent; cursor: grab; transition: border-color 0.15s, box-shadow 0.15s; }
+    .live-feed-ai-row .ai-stat:active { cursor: grabbing; }
+    .live-feed-ai-row .ai-stat.dragging { opacity: 0.6; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .live-feed-ai-row .ai-stat.drag-over { border-color: var(--accent); background: var(--surface); }
+    .live-feed-ai-row .ai-stat-label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+    .live-feed-ai-row .ai-stat-val { color: var(--text-secondary); word-break: break-word; line-height: 1.35; }
+    @media (max-width: 480px) {
+      .live-feed-ai-row .ai-row-stats { grid-template-columns: 1fr; }
+    }
+    .live-feed-event-row { padding: 0.75rem; margin-bottom: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.75rem; }
+    .live-feed-event-row .ev-row-time { color: var(--accent); font-weight: 600; margin-bottom: 0.35rem; }
+    .live-feed-event-row .ev-row-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: 0.5rem 0.75rem; }
+    .live-feed-event-row .ev-row-stats .ai-stat-val { word-break: break-word; }
+    .live-feed-aidata-group-cap:first-child { margin-top: 0; }
+    .live-activity-fs-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+    .live-activity-fs-heading .live-feed-activity-heading { flex: 1; margin: 0; border: none; }
+    #liveActivityFullscreenTarget { transition: background 0.2s; }
+    #liveActivityFullscreenTarget:fullscreen,
+    #liveActivityFullscreenTarget:-webkit-full-screen,
+    #liveActivityFullscreenTarget:-moz-full-screen,
+    #liveActivityFullscreenTarget:-ms-fullscreen { background: var(--bg); padding: 1rem; max-height: 100vh; overflow: auto; }
+    #liveActivityFullscreenTarget:fullscreen .live-feed-activity,
+    #liveActivityFullscreenTarget:-webkit-full-screen .live-feed-activity,
+    #liveActivityFullscreenTarget:-moz-full-screen .live-feed-activity,
+    #liveActivityFullscreenTarget:-ms-fullscreen .live-feed-activity { max-height: 70vh; }
+    #liveActivityFullscreenTarget:fullscreen .live-activity-fs-grid,
+    #liveActivityFullscreenTarget:-webkit-full-screen .live-activity-fs-grid,
+    #liveActivityFullscreenTarget:-moz-full-screen .live-activity-fs-grid,
+    #liveActivityFullscreenTarget:-ms-fullscreen .live-activity-fs-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; gap: 1rem; align-items: start; }
+    #liveActivityFullscreenTarget:fullscreen .live-activity-fs-grid .grid-section,
+    #liveActivityFullscreenTarget:-webkit-full-screen .live-activity-fs-grid .grid-section,
+    #liveActivityFullscreenTarget:-moz-full-screen .live-activity-fs-grid .grid-section,
+    #liveActivityFullscreenTarget:-ms-fullscreen .live-activity-fs-grid .grid-section { min-width: 0; }
+    @media (min-width: 900px) {
+      .live-activity-fs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; align-items: start; }
+      .live-activity-fs-grid .grid-section { min-width: 0; }
+    }
+    .live-activity-fs-footer { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--border); background: var(--surface); margin-top: 0.5rem; flex-shrink: 0; }
+    .live-activity-fs-footer .btn { min-width: 6rem; }
+    .live-activity-fs-footer .fs-rec-on { color: #ef4444; font-weight: 700; }
+    .live-activity-fs-footer .fs-audio-on { color: var(--accent); }
+    .live-feed-last-updated { font-size: 0.7rem; color: var(--muted); margin-left: auto; }
+    .live-feed-last-updated.live-feed-stale { color: #f59e0b; font-weight: 600; }
+    .recording-options-toggle { font-size: 0.75rem; color: var(--accent); cursor: pointer; background: none; border: none; padding: 0.25rem 0.5rem; }
+    .recording-options-toggle:hover { text-decoration: underline; }
+    .recording-options-panel { display: none; padding: 0.75rem; border-top: 1px solid var(--border); background: var(--surface); font-size: 0.75rem; }
+    .recording-options-panel.open { display: block; }
+    .recording-options-panel label { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 1rem; margin-bottom: 0.35rem; cursor: pointer; }
+    .recording-options-panel h4 { margin: 0 0 0.5rem 0; font-size: 0.8rem; color: var(--text); }
+    .ai-audio-viz-section, .ai-pipeline-section { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); background: var(--bg); font-size: 0.75rem; }
+    .ai-audio-viz-section h4, .ai-pipeline-section h4 { margin: 0 0 0.35rem 0; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+    #audioVizCanvas { display: block; width: 100%; max-width: 280px; height: 48px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    .ai-pipeline-step { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+    .ai-pipeline-step:last-child { border-bottom: none; }
+    .ai-pipeline-step .step-name { flex-shrink: 0; font-weight: 600; color: var(--accent); min-width: 6rem; }
+    .ai-pipeline-step .step-detail { color: var(--text-secondary); word-break: break-word; }
+    .ai-pipeline-step .step-conf { color: var(--muted); font-size: 0.7rem; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar" role="navigation" aria-label="Main">
+  <div class="navbar-inner">
+    <a class="brand" href="/">Vigil</a>
+    <!-- Top bar recording light: blinks when recording. Note: MacBook camera LED is controlled by macOS and cannot be disabled by the app. -->
+    <span id="navRecordingIndicator" class="nav-recording-indicator recording-off" aria-live="polite" title="Recording status (blinks when live)">
+      <span class="rec-dot"></span><span class="rec-label">REC</span>
+    </span>
+    <span id="navMicIndicator" class="nav-mic-indicator mic-off" aria-label="Audio recording" title="Audio recording on/off">🎤</span>
+    <div class="nav-links">
+      <a href="/#live">Live</a>
+      <a href="/#activity">Activity</a>
+      <a href="/#export">Export</a>
+      <a href="/settings">Settings</a>
+      <button type="button" class="btn btn-sm" id="btnHelp" aria-label="Help" title="Help (?)" style="margin-right:0.25rem;">?</button>
+      {% if not logged_in %}<a class="auto-login-link" href="/auto_login" title="Auto sign-in when server has AUTO_LOGIN=1">Auto sign-in</a>{% endif %}
+      {% if logged_in %}<span class="nav-logged-in" title="Logged in">✅ <a href="/logout" class="login-link">Log out</a></span>{% else %}<a class="login-link" href="/login">Sign in</a>{% endif %}
+    </div>
+  </div>
+</nav>
+
+<div id="helpModal" role="dialog" aria-labelledby="helpModalTitle" aria-modal="true" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem;">
+  <div class="card" style="max-width:420px;margin:auto;">
+    <h2 id="helpModalTitle" style="margin:0 0 0.75rem 0;">Help</h2>
+    <p class="muted" style="margin:0 0 0.75rem 0;font-size:0.9rem;">Live: streams and recording. Activity: events, timeline, chart. Export: CSV, recordings, map, analytics. Use nav to jump.</p>
+    <p class="muted" style="margin:0 0 0.35rem 0;font-size:0.85rem;">Press <kbd>?</kbd> to toggle help. Focus a stream and press <kbd>F</kbd> for fullscreen.</p>
+    <p class="muted" style="margin:0;font-size:0.85rem;">KPI cards link to Live or Activity.</p>
+    <button type="button" class="btn btn-sm" id="btnHelpClose" style="margin-top:1rem;">Close</button>
+  </div>
+</div>
+
+<main>
+  <section class="live-feed-top" id="liveFeedTop" aria-label="Live feed and overview">
+    <div class="live-feed-box">
+      <div id="liveActivityFullscreenTarget">
+        <div class="live-activity-fs-heading">
+          <span class="live-feed-activity-heading">Live activity — AI detections &amp; events</span>
+          <span class="live-feed-last-updated" id="liveFeedLastUpdated" aria-live="polite"></span>
+          <button type="button" class="btn btn-sm" id="liveActivityFullscreenBtn" aria-label="View activity fullscreen">Fullscreen</button>
+        </div>
+        <div class="live-activity-fs-grid live-feed-activity-wrap">
+        <div class="grid-section" style="grid-column:1/-1;">
+        <div class="live-feed-activity-tabs" role="tablist">
+          <button type="button" class="live-feed-activity-tab active" role="tab" aria-selected="true" data-tab="activity">Activity</button>
+          <button type="button" class="live-feed-activity-tab" role="tab" aria-selected="false" data-tab="aidata">AI data (all stats)</button>
+          <button type="button" class="live-feed-activity-tab" role="tab" aria-selected="false" data-tab="speech">Speech log</button>
+          <button type="button" class="live-feed-activity-tab" role="tab" aria-selected="false" data-tab="events">Events</button>
+        </div>
+        <p class="live-feed-enterprise-note" style="margin:0;padding:0.25rem 0.5rem;font-size:0.7rem;color:var(--muted);">AI detections and events are collected only while recording is on. Exports and recordings use integrity hashes (NISTIR 8161–style chain of custody). Speech from microphone is transcribed and logged when audio is enabled.</p>
+        <div class="live-feed-activity-toolbar">
+          <label>Sort:</label>
+          <select id="liveFeedSort">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <label style="margin-left:0.5rem;">Event type:</label>
+          <select id="liveFeedFilterType">
+            <option value="">All</option>
+            <option value="motion">Motion</option>
+            <option value="loitering">Loitering</option>
+            <option value="line_cross">Line cross</option>
+          </select>
+          <label>Severity:</label>
+          <select id="liveFeedFilterSeverity">
+            <option value="">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <label>Camera:</label>
+          <select id="liveFeedFilterCamera">
+            <option value="">All</option>
+          </select>
+          <button type="button" class="btn btn-sm" id="liveFeedRefresh" style="margin-left:0.5rem;">Refresh</button>
+        </div>
+        <div id="liveFeedPanelActivity" class="live-feed-panel active grid-section" role="tabpanel" style="grid-column:1/-1;">
+          <div id="liveFeedChat" class="live-feed-activity" aria-live="polite" style="min-height:12rem;">
+            <div class="empty-state" style="margin:0;padding:0.75rem;">Loading…</div>
+          </div>
+        </div>
+        <div id="liveFeedPanelAidata" class="live-feed-panel grid-section" role="tabpanel">
+          <div class="live-feed-aidata-toolbar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.5rem;padding:0.35rem 0;">
+            <label>Filter by:</label>
+            <select id="liveFeedFilterObject" aria-label="Filter by object" style="padding:0.2rem 0.4rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.75rem;">
+              <option value="">All objects</option>
+            </select>
+            <select id="liveFeedFilterEmotion" aria-label="Filter by emotion" style="padding:0.2rem 0.4rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.75rem;">
+              <option value="">All emotions</option>
+            </select>
+            <select id="liveFeedFilterStress" aria-label="Filter by stress" style="padding:0.2rem 0.4rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.75rem;">
+              <option value="">All stress</option>
+            </select>
+            <select id="liveFeedFilterAudioSentiment" aria-label="Filter by audio sentiment" style="padding:0.2rem 0.4rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.75rem;">
+              <option value="">All audio sentiment</option>
+            </select>
+            <label style="margin-left:0.25rem;">Group by:</label>
+            <select id="liveFeedGroupBy" aria-label="Group by" style="padding:0.2rem 0.4rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.75rem;">
+              <option value="">None</option>
+              <option value="event">Event</option>
+              <option value="object">Object</option>
+              <option value="emotion">Emotion</option>
+              <option value="camera_id">Camera</option>
+              <option value="stress_level">Stress</option>
+              <option value="date">Date</option>
+            </select>
+            <button type="button" class="btn btn-sm" id="liveFeedAidataResetOrder" title="Reset field order to default" style="font-size:0.7rem;">Reset field order</button>
+          </div>
+          <div id="liveFeedAIData" class="live-feed-activity" style="min-height:10rem;">
+            <div class="empty-state" style="margin:0;padding:0.75rem;">Switch to this tab to load. Click Refresh.</div>
+          </div>
+        </div>
+        <div id="liveFeedPanelSpeech" class="live-feed-panel grid-section" role="tabpanel">
+          <div id="liveFeedSpeech" class="live-feed-activity" style="min-height:10rem;">
+            <div class="empty-state" style="margin:0;padding:0.75rem;">Switch to this tab to load. Shows spoken-word transcriptions (speech-to-text). Click Refresh.</div>
+          </div>
+        </div>
+        <div id="liveFeedPanelEvents" class="live-feed-panel grid-section" role="tabpanel">
+          <div id="liveFeedEvents" class="live-feed-activity" style="min-height:10rem;">
+            <div class="empty-state" style="margin:0;padding:0.75rem;">Switch to this tab to load. Click Refresh.</div>
+          </div>
+        </div>
+        <div class="grid-section" style="grid-column:1/-1;">
+        <button type="button" class="recording-options-toggle" id="recordingOptionsToggle" aria-expanded="false">What we're gathering (recording options)</button>
+        <div class="recording-options-panel" id="recordingOptionsPanel" role="region" aria-labelledby="recordingOptionsToggle">
+          <h4>Event types to record</h4>
+          <label><input type="checkbox" id="gatherMotion" checked> Motion</label>
+          <label><input type="checkbox" id="gatherLoitering" checked> Loitering</label>
+          <label><input type="checkbox" id="gatherLineCross" checked> Line cross</label>
+          <h4 style="margin-top:0.75rem;">Sensors &amp; data</h4>
+          <label><input type="checkbox" id="gatherAudio" checked> Audio / speech-to-text</label>
+          <label><input type="checkbox" id="gatherThermal" checked> Thermal (if available)</label>
+          <label><input type="checkbox" id="gatherWifi" checked> WiFi probe (if available)</label>
+          <h4 style="margin-top:0.75rem;">AI detail level</h4>
+          <label><input type="radio" name="aiDetail" value="minimal" id="aiDetailMinimal"> Minimal (event, object, time)</label>
+          <label><input type="radio" name="aiDetail" value="full" id="aiDetailFull" checked> Full (all attributes, NIST-style)</label>
+          <button type="button" class="btn btn-sm" id="recordingOptionsApply" style="margin-top:0.5rem;">Apply to current recording</button>
+        </div>
+        <div class="ai-audio-viz-section">
+          <h4>Live audio level</h4>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            <div class="audio-level-meter-wrap" style="width:8px;height:48px;background:var(--surface);border-radius:4px;overflow:hidden;">
+              <div id="audioLevelMeter" style="width:100%;height:0%;min-height:2px;background:var(--accent);border-radius:2px;transition:height 0.05s ease-out;"></div>
+            </div>
+            <canvas id="audioVizCanvas" width="260" height="48" aria-label="Audio waveform"></canvas>
+          </div>
+          <button type="button" class="btn btn-sm" id="audioVizToggle" style="margin-top:0.35rem;">Enable mic</button>
+          <p class="muted" id="audioVizHint" style="margin:0.25rem 0 0 0;font-size:0.65rem;">Mic requires HTTPS or <code>localhost</code> in most browsers.</p>
+        </div>
+        <div class="ai-pipeline-section grid-section">
+          <h4>How the AI is collecting</h4>
+          <div id="aiPipelineState" class="live-feed-activity" aria-live="polite" style="max-height:160px;overflow-y:auto;">—</div>
+        </div>
+        <div class="grid-section" style="grid-column:1/-1;">
+          <h4 style="margin:0 0 0.35rem 0;font-size:0.75rem;color:var(--muted);">Live activity (last 60 min)</h4>
+          <canvas id="liveActivityChart" width="400" height="120" aria-label="Events over time"></canvas>
+        </div>
+        </div>
+        </div>
+        <div class="live-activity-fs-footer">
+          <button type="button" class="btn btn-sm" id="fsRecordBtn" aria-label="Toggle recording">● Record</button>
+          <button type="button" class="btn btn-sm" id="fsAudioBtn" aria-label="Toggle audio">🎤 Audio</button>
+        </div>
+      </div>
+      </div>
+      <div class="live-feed-heading">
+        <span class="live-pill">LIVE</span>
+        <span id="primaryStreamCaption">Live feed</span>
+      </div>
+      <div class="live-feed-frame">
+        <img id="primaryStreamImg" src="" alt="Live camera feed" style="display:none;" />
+        <div id="primaryStreamPlaceholder" class="empty-state">Loading streams…</div>
+      </div>
+    </div>
+    <div class="live-feed-explanation">
+      <h2>What you're seeing</h2>
+      <p class="what-seen">Real-time video from your configured camera. The feed above shows the primary stream; all streams and controls are in the <a href="/#live" style="color:var(--accent);">Live</a> section below.</p>
+      <h2 style="margin-top:1rem;">What's happening</h2>
+      <p class="what-happening">AI analyzes the video for motion, loitering, and line crossing. Detected events appear in <a href="/#activity" style="color:var(--accent);">Activity</a> (events, timeline, chart). You can start or stop recording, take snapshots, and export data from the Live cards and <a href="/#export" style="color:var(--accent);">Export</a>.</p>
+      <ul>
+        <li>Motion — movement in the frame</li>
+        <li>Loitering — person or object in a zone longer than the threshold</li>
+        <li>Line cross — crossing a configured virtual line</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="hero" aria-label="Product title">
+    <h1>Edge Video Security</h1>
+    <p class="tagline">Streams, events, and export in one place.</p>
+  </section>
+
+  <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;" aria-label="Status at a glance">
+    <a href="/#live" class="card" style="padding: 0.6rem; text-decoration: none; color: inherit;">
+      <div style="font-size:0.7rem; color: var(--muted); text-transform: uppercase;">Recording</div>
+      <div id="dashboardRecording" style="font-size:1.1rem; font-weight: 600;">—</div>
+    </a>
+    <a href="/#activity" class="card" style="padding: 0.6rem; text-decoration: none; color: inherit;">
+      <div style="font-size:0.7rem; color: var(--muted); text-transform: uppercase;">Events today</div>
+      <div id="dashboardEventsToday" style="font-size:1.1rem; font-weight: 600;">—</div>
+    </a>
+    <a href="/#activity" class="card" style="padding: 0.6rem; text-decoration: none; color: inherit;">
+      <div style="font-size:0.7rem; color: var(--muted); text-transform: uppercase;">Needs review</div>
+      <div id="dashboardUnack" style="font-size:1.1rem; font-weight: 600;">—</div>
+    </a>
+    <a href="/#live" class="card" style="padding: 0.6rem; text-decoration: none; color: inherit;">
+      <div style="font-size:0.7rem; color: var(--muted); text-transform: uppercase;">Streams</div>
+      <div id="dashboardStreams" style="font-size:1.1rem; font-weight: 600;">—</div>
+    </a>
+  </div>
+
+  <h2 style="margin-bottom:0.75rem;padding-bottom:0.35rem;border-bottom:1px solid var(--border); font-size:1rem;">Live</h2>
+  <div id="live" class="grid" aria-label="Live camera streams">
+    <div class="empty-state">Loading streams…</div>
+  </div>
+
+  <h2 style="margin-bottom:1rem;margin-top:2rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border);">Status &amp; controls</h2>
+  <div class="grid">
+    <div class="card section" id="status" role="region" aria-label="System Status">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+        <h2 style="border:none;margin:0;padding:0;">System Status &amp; Network Health</h2>
+        <button type="button" class="btn btn-sm" id="btnRefreshStatus" aria-label="Refresh system status">Refresh</button>
+      </div>
+      <div id="statusContent">
+        <p class="empty-state">Loading…</p>
+      </div>
+      <button type="button" class="btn btn-sm" id="btnDetectCameras">Detect cameras</button>
+      <div id="detectResult" class="empty-state" style="margin-top:0.5rem;display:none;"></div>
+    </div>
+    <div class="card" role="region" aria-label="Recording and PTZ">
+      <h3>Recording &amp; PTZ</h3>
+      <p id="recordingStatus" class="empty-state">Loading…</p>
+      <button type="button" class="btn" id="btnToggleRecording" disabled>Start Recording</button>
+      <p style="margin:0.75rem 0 0.25rem 0;font-size:0.8rem;color:var(--muted);">Motion detection</p>
+      <button type="button" class="btn btn-sm" id="btnToggleMotion" aria-label="Toggle motion detection">Motion on/off</button>
+      <p style="margin:0.75rem 0 0.25rem 0;font-size:0.8rem;color:var(--muted);">PTZ controls</p>
+      <div>
+        <button type="button" class="btn btn-sm" id="btnPtzLeft" disabled>Left</button>
+        <button type="button" class="btn btn-sm" id="btnPtzRight" disabled>Right</button>
+        <button type="button" class="btn btn-sm" id="btnPtzStop" disabled>Stop</button>
+      </div>
+    </div>
+    <div class="card" role="region" aria-label="AI Detection Log">
+      <h3>AI Detection Log</h3>
+      <div id="aiLogContainer" class="log-panel" aria-live="polite">Loading…</div>
+      <p class="muted" style="margin-top:0.5rem;font-size:0.8rem;">Export AI data and log in <a href="/#export" style="color:var(--accent);">Export</a>.</p>
+    </div>
+  </div>
+
+  <section class="card section" id="realtime-ai-edge" role="region" aria-label="Real-time AI analysis (edge stack)" style="margin-top:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+      <h2 style="border:none;margin:0;padding:0;">Real-time AI analysis (edge stack)</h2>
+      <a href="#realtime-ai-edge" class="btn btn-sm" style="text-decoration:none;">Audit &amp; roadmap</a>
+    </div>
+    <p class="muted" style="margin:0 0 0.75rem 0;font-size:0.9rem;">Ultra-fast, self-hosted AI for security cameras: multiple RTSP streams, object detection (&lt;200ms), and a modern web GUI. Run with Docker for edge (Jetson, Intel/AMD/NVIDIA) or CPU fallback.</p>
+    <ul style="margin:0;padding-left:1.25rem;font-size:0.9rem;line-height:1.5;">
+      <li><strong>Backend:</strong> Docker Compose; YOLOv8n / YOLOv10n / RT-DETR (Ultralytics); ONNX/TensorRT (NVIDIA), OpenVINO (Intel), or CPU; OpenCV + GStreamer/FFmpeg RTSP; annotated stream (MJPEG/WebRTC/HLS); optional events + webhook/MQTT.</li>
+      <li><strong>Frontend:</strong> React + TypeScript + Vite; dark dashboard; grid of live feeds (2×2, 3×3, fullscreen); bounding boxes + labels; sidebar: RTSP URLs, detection on/off, confidence slider, class filter, FPS/latency.</li>
+      <li><strong>Deploy:</strong> <code>docker compose up</code>; config via <code>cameras.yaml</code> or <code>.env</code>; volumes for config and snapshots. See <a href="/#export" style="color:var(--accent);">Export</a> for data and recordings.</li>
+    </ul>
+    <div class="filters-row" style="margin-top:0.75rem;">
+      <a href="https://github.com/ultralytics/ultralytics" class="btn btn-sm" style="text-decoration:none;" target="_blank" rel="noopener">Ultralytics YOLO</a>
+      <span class="muted" style="font-size:0.8rem;">Run with Docker: <code>docker compose up</code> (see project root). Full audit: <code>docs/REALTIME_AI_EDGE_AUDIT.md</code>.</span>
+    </div>
+  </section>
+
+  <section class="section" id="activity" role="region" aria-label="Activity">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+    <h2 style="margin:0;padding:0;border:none;">Activity</h2>
+    <div class="activity-tabs" role="tablist">
+      <button type="button" class="activity-tab active" role="tab" aria-selected="true" data-tab="events">Events</button>
+      <button type="button" class="activity-tab" role="tab" aria-selected="false" data-tab="timeline">Timeline</button>
+      <button type="button" class="activity-tab" role="tab" aria-selected="false" data-tab="chart">Chart</button>
+    </div>
+  </div>
+  <div id="activityPanelEvents" class="activity-panel" role="tabpanel">
+  <div class="filters-row">
+    <label>Event type:</label>
+    <select id="filterEventType" aria-label="Filter by event type" title="Filter events by behavior type">
+      <option value="">All</option>
+      <option value="motion" title="Camera detected motion in the frame.">Motion</option>
+      <option value="loitering" title="Person or object remained in a monitored zone longer than the threshold.">Loitering</option>
+      <option value="line_cross" title="Person or object crossed a configured virtual line.">Line crossing</option>
+    </select>
+    <label>Severity:</label>
+    <select id="filterSeverity" aria-label="Filter by severity">
+      <option value="">All</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <label>Acknowledged:</label>
+    <select id="filterAck" aria-label="Filter by acknowledgment">
+      <option value="">All</option>
+      <option value="false">Unacknowledged</option>
+      <option value="true">Acknowledged</option>
+    </select>
+    <button type="button" class="btn btn-sm" id="btnRefreshEvents">Refresh</button>
+  </div>
+  <div class="filters-row" style="margin-top:0.5rem;">
+    <label for="eventsSearchInput">Search:</label>
+    <input type="text" id="eventsSearchInput" placeholder="Keyword…" aria-label="Search events" style="max-width:12rem;padding:0.35rem 0.5rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);" />
+    <button type="button" class="btn btn-sm" id="btnSearchEvents">Search</button>
+    <button type="button" class="btn btn-sm" id="btnClearSearch" style="display:none;">Clear search</button>
+  </div>
+  <div id="eventsSearchResults" class="log-panel" style="max-height:320px;display:none;margin-top:0.5rem;">
+    <p class="empty-state">Search results will appear here.</p>
+  </div>
+  <div id="eventsList" class="log-panel" style="max-height:320px;">
+    <p class="empty-state">Loading events…</p>
+  </div>
+  </div>
+  <div id="activityPanelTimeline" class="activity-panel" role="tabpanel" style="display:none;">
+    <div class="filters-row" style="margin-bottom:0.5rem;">
+      <span>Range:</span>
+      <button type="button" class="btn btn-sm timeline-range-btn active" data-range="24h" aria-pressed="true">24h</button>
+      <button type="button" class="btn btn-sm timeline-range-btn" data-range="7d">7 days</button>
+      <button type="button" class="btn btn-sm timeline-range-btn" data-range="all">All</button>
+      <button type="button" class="btn btn-sm" id="btnRefreshTimeline">Refresh</button>
+    </div>
+    <div id="timelineList" class="log-panel" style="max-height:360px;">
+      <p class="empty-state">Loading…</p>
+    </div>
+  </div>
+  <div id="activityPanelChart" class="activity-panel" role="tabpanel" style="display:none;">
+    <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+      <div class="card" style="padding: 0.6rem;"><div style="font-size:0.7rem; color: var(--muted);">Motion</div><div id="behaviorsCountMotion" style="font-size:1.25rem; font-weight: 600;">—</div></div>
+      <div class="card" style="padding: 0.6rem;"><div style="font-size:0.7rem; color: var(--muted);">Loitering</div><div id="behaviorsCountLoitering" style="font-size:1.25rem; font-weight: 600;">—</div></div>
+      <div class="card" style="padding: 0.6rem;"><div style="font-size:0.7rem; color: var(--muted);">Line cross</div><div id="behaviorsCountLineCross" style="font-size:1.25rem; font-weight: 600;">—</div></div>
+      <div class="card" style="padding: 0.6rem;"><div style="font-size:0.7rem; color: var(--muted);">Needs review</div><div id="behaviorsCountUnack" style="font-size:1.25rem; font-weight: 600;">—</div></div>
+    </div>
+    <div style="margin-bottom:0.5rem; font-size:0.85rem; color: var(--muted);">Activity today by hour</div>
+    <div id="behaviorsActivityChart" style="display:flex; align-items:flex-end; gap:2px; height:72px; margin-bottom:0.5rem;" aria-label="Events per hour"></div>
+    <div class="filters-row">
+      <label>Filter:</label>
+      <select id="behaviorsFilterType" aria-label="Filter by behavior">
+        <option value="">All</option>
+        <option value="motion">Motion</option>
+        <option value="loitering">Loitering</option>
+        <option value="line_cross">Line crossing</option>
+      </select>
+      <button type="button" class="btn btn-sm" id="btnRefreshBehaviors">Refresh</button>
+    </div>
+    <div id="behaviorsFeedList" class="log-panel" style="max-height:220px;">
+      <p class="empty-state">Loading…</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="export" role="region" aria-label="Export">
+  <h2>Export &amp; data</h2>
+  <p class="muted" style="margin:0 0 0.75rem 0;font-size:0.9rem;">Download AI data, verify integrity, recordings, map and analytics.</p>
+  <div class="card">
+    <div class="filters-row" style="margin-bottom:0.5rem;"><span class="muted" style="font-size:0.8rem;">Data export</span></div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+      <a href="/export_data" class="btn btn-sm" style="display:inline-block;text-decoration:none;">AI data (CSV)</a>
+      <button type="button" class="btn btn-sm" id="btnVerifyAiData">Verify</button>
+      <button type="button" class="btn btn-sm" onclick="exportAILogs()">AI log (.txt)</button>
+      <a href="/audit_log/export" class="btn btn-sm" style="display:inline-block;text-decoration:none;">Audit log (CSV)</a>
+      <button type="button" class="btn btn-sm" id="btnVerifyAudit">Verify audit</button>
+      <a href="/api/v1/surveillance_analysis_report" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="display:inline-block;text-decoration:none;" title="View surveillance analysis report (markdown). Run scripts/surveillance_log_parser.py to generate.">Analysis report</a>
+      <span id="verifyAiResult" style="font-size:0.85rem;display:none;margin-left:0.25rem;"></span>
+      <span id="verifyAuditResult" style="font-size:0.85rem;display:none;margin-left:0.25rem;"></span>
+    </div>
+    <p class="muted" style="font-size:0.8rem;margin:0 0 0.5rem 0;">Analysis report: run <code>scripts/surveillance_log_parser.py</code> to generate. To import or parse a raw surveillance log (YOLOv8/Frigate-style), use the React Export view or POST to <code>/api/v1/parse_log</code>.</p>
+    <h3 style="font-size:0.95rem;margin:0 0 0.5rem 0;color:var(--text-secondary);">Recordings</h3>
+    <div class="export-recordings-toolbar" id="exportRecordingsToolbar" style="display:none;">
+      <label for="exportRecordingsSearch">Filter:</label>
+      <input type="search" id="exportRecordingsSearch" placeholder="Search by filename…" aria-label="Filter recordings by filename" />
+      <label for="exportRecordingsSort">Sort by:</label>
+      <select id="exportRecordingsSort" aria-label="Sort recordings">
+        <option value="date-desc">Date (newest first)</option>
+        <option value="date-asc">Date (oldest first)</option>
+        <option value="name-asc">Name (A–Z)</option>
+        <option value="name-desc">Name (Z–A)</option>
+        <option value="size-desc">Size (largest first)</option>
+        <option value="size-asc">Size (smallest first)</option>
+      </select>
+      <span id="exportRecordingsCount" class="muted" style="font-size:0.8rem;"></span>
+    </div>
+    <div id="exportRecordingsList" class="video-downloads" style="margin-top:0.5rem;">
+      <p class="empty-state">Loading… (sign in to view recordings)</p>
+    </div>
+  </div>
+  <div class="export-subsection" id="storage-subsection">
+    <h3 style="font-size:1rem;margin:0 0 0.5rem 0;color:var(--text-secondary);">Storage location</h3>
+    <p class="muted" style="font-size:0.85rem;margin:0 0 0.5rem 0;">Choose where recordings and exports are saved. Use local disk or an external drive; changes apply to new recordings.</p>
+    <div class="card" style="padding:0.75rem;">
+      <div class="filters-row" style="align-items:center;flex-wrap:wrap;gap:0.5rem;">
+        <strong style="font-size:0.9rem;">Current path:</strong>
+        <code id="storageCurrentPath" style="font-size:0.8rem;word-break:break-all;color:var(--accent);">—</code>
+        <span id="storageWriteBadge" class="badge" style="display:none;">No write access</span>
+      </div>
+      <div class="filters-row" style="margin-top:0.5rem;font-size:0.85rem;">
+        <span class="muted">Used:</span> <span id="storageUsedBytes">—</span>
+        <span class="muted" style="margin-left:0.5rem;">Recordings:</span> <span id="storageRecordingCount">—</span>
+      </div>
+      <div class="filters-row" style="margin-top:0.75rem;">
+        <label for="storageDriveSelect">Save to:</label>
+        <select id="storageDriveSelect" aria-label="Choose storage location" style="min-width:12rem;padding:0.35rem 0.5rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);">
+          <option value="">Loading…</option>
+        </select>
+        <button type="button" class="btn btn-sm" id="btnStorageApply">Use this location</button>
+      </div>
+      <div id="storageNotification" role="alert" class="live-feed-enterprise-note" style="margin-top:0.5rem;display:none;padding:0.5rem;border-radius:var(--radius-sm);"></div>
+    </div>
+  </div>
+  <div class="export-subsection">
+    <h3 style="font-size:1rem;margin:0 0 0.5rem 0;color:var(--text-secondary);">Map</h3>
+    <div class="filters-row" style="margin-bottom:0.5rem;">
+      <label for="mapSiteSelect">Site:</label>
+      <select id="mapSiteSelect" aria-label="Select site">
+        <option value="default">Loading…</option>
+      </select>
+      <button type="button" class="btn btn-sm" id="btnRefreshMap">Refresh</button>
+    </div>
+    <div class="card" style="position:relative;aspect-ratio:16/10;max-height:50vh;background:var(--surface);overflow:hidden;">
+      <img id="mapImage" src="" alt="Site map" style="width:100%;height:100%;object-fit:contain;display:none;" />
+      <div id="mapPlaceholder" class="empty-state" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">No map image. Set map_url in sites.</div>
+      <div id="mapMarkers" style="position:absolute;inset:0;pointer-events:none;"></div>
+    </div>
+    <p id="mapCameraList" class="muted" style="margin-top:0.35rem;font-size:0.85rem;">Cameras: —</p>
+  </div>
+  <div class="export-subsection">
+    <h3 style="font-size:1rem;margin:0 0 0.5rem 0;color:var(--text-secondary);">Analytics</h3>
+    <div class="filters-row" style="margin-bottom:0.5rem;">
+      <label for="analyticsFrom">From:</label>
+      <input type="date" id="analyticsFrom" aria-label="From date" style="padding:0.35rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);" />
+      <label for="analyticsTo">To:</label>
+      <input type="date" id="analyticsTo" aria-label="To date" style="padding:0.35rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);" />
+      <button type="button" class="btn btn-sm" id="btnLoadAnalytics">Load</button>
+      <button type="button" class="btn btn-sm" id="btnExportAggregatesCsv">Aggregates (CSV)</button>
+    </div>
+    <div id="analyticsSummary" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.75rem;"></div>
+    <div id="analyticsTableWrap" class="log-panel" style="max-height:320px;overflow:auto;">
+      <p class="empty-state">Set date range and click Load.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p style="margin:0;">Vigil Edge Video Security</p>
+  <p style="margin:0.5rem 0 0 0;"><a href="/#export">Export</a>{% if not logged_in %} · <a href="/auto_login">Auto sign-in</a>{% endif %} · {% if logged_in %}✅ <a href="/logout">Log out</a>{% else %}<a href="/login">Sign in</a>{% endif %}</p>
+</footer>
+</main>
+
+<script>
+(function() {
+  const API = { credentials: 'include' };
+  const snapshotsByCam = {};
+
+  function openHelp() {
+    var m = document.getElementById('helpModal');
+    if (m) { m.style.display = 'flex'; m.style.flexDirection = 'column'; document.body.addEventListener('keydown', helpKeyHandler); }
+  }
+  function closeHelp() {
+    var m = document.getElementById('helpModal');
+    if (m) { m.style.display = 'none'; document.body.removeEventListener('keydown', helpKeyHandler); }
+  }
+  function helpKeyHandler(ev) {
+    if (ev.key === '?' || ev.key === 'Escape') { ev.preventDefault(); closeHelp(); }
+  }
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === '?' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !/input|textarea|select/i.test((ev.target && ev.target.tagName) || '')) {
+      ev.preventDefault();
+      var m = document.getElementById('helpModal');
+      if (m && m.style.display === 'none') openHelp(); else closeHelp();
+      return;
+    }
+    if ((ev.key === 'f' || ev.key === 'F') && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !/input|textarea|select/i.test((ev.target && ev.target.tagName) || '')) {
+      var viewer = (ev.target && ev.target.closest && ev.target.closest('.stream-viewer')) || (document.fullscreenElement && document.fullscreenElement.classList && document.fullscreenElement.classList.contains('stream-viewer') ? document.fullscreenElement : null);
+      if (viewer) {
+        ev.preventDefault();
+        if (document.fullscreenElement === viewer) document.exitFullscreen(); else viewer.requestFullscreen().catch(function() {});
+      }
+    }
+  });
+  var btnHelp = document.getElementById('btnHelp');
+  if (btnHelp) btnHelp.addEventListener('click', function() { var m = document.getElementById('helpModal'); if (m && m.style.display === 'none') openHelp(); else closeHelp(); });
+  var btnHelpClose = document.getElementById('btnHelpClose');
+  if (btnHelpClose) btnHelpClose.addEventListener('click', closeHelp);
+
+  function scrollToHash() {
+    var hash = location.hash.slice(1);
+    if (hash) {
+      var el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  window.addEventListener('hashchange', scrollToHash);
+  if (location.hash) scrollToHash();
+  const maxSnapshots = 10;
+  let streams = [];
+  let extendedLogs = [];
+
+  function sanitizeText(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
+  }
+
+  function addExtendedLog(text) {
+    const ts = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    extendedLogs.unshift({ category: 'system', timestamp: ts, description: text });
+    if (extendedLogs.length > 50) extendedLogs.pop();
+  }
+
+  function toDateAnd12hr(isoOrDatetime) {
+    if (!isoOrDatetime) return { dateStr: '—', time12: '—' };
+    var s = String(isoOrDatetime).trim().replace('T', ' ').slice(0, 19);
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return { dateStr: '—', time12: '—' };
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var dateStr = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var am = h < 12;
+    var h12 = h % 12 || 12;
+    var time12 = h12 + ':' + (m < 10 ? '0' : '') + m + ' ' + (am ? 'am' : 'pm');
+    return { dateStr: dateStr, time12: time12 };
+  }
+
+  var liveFeedCurrentTab = 'activity';
+  var liveFeedAiRowsCache = [];
+  var liveFeedEventsCache = [];
+  var liveFeedActivityCache = [];
+
+  var AI_DATA_CANONICAL_FIELDS = ['date','time','event','object','emotion','pose','scene','crowd_count','stress_level','threat_score','anomaly_score','build','individual','facial_features','perceived_gender','perceived_age_range','hair_color','estimated_height_cm','clothing_description','gait_notes','micro_expression','license_plate','camera_id','audio_transcription','audio_event','audio_sentiment','audio_emotion','audio_stress_level','audio_threat_score','audio_anomaly_score','audio_background_type','audio_intoxication_indicator','device_mac','attention_region','predicted_intent','intoxication_indicator','drug_use_indicator','suspicious_behavior','model_version','timestamp_utc','integrity_hash'];
+  function getAIDataFieldOrder() {
+    try {
+      var s = localStorage.getItem('vigil_ai_data_field_order');
+      if (s) { var a = JSON.parse(s); if (Array.isArray(a) && a.length) return a; }
+    } catch (e) {}
+    return AI_DATA_CANONICAL_FIELDS.slice();
+  }
+  function setAIDataFieldOrder(order) {
+    try { localStorage.setItem('vigil_ai_data_field_order', JSON.stringify(order)); } catch (e) {}
+  }
+  function getLiveFeedFilters() {
+    var sortEl = document.getElementById('liveFeedSort');
+    var typeEl = document.getElementById('liveFeedFilterType');
+    var sevEl = document.getElementById('liveFeedFilterSeverity');
+    var camEl = document.getElementById('liveFeedFilterCamera');
+    var objEl = document.getElementById('liveFeedFilterObject');
+    var emoEl = document.getElementById('liveFeedFilterEmotion');
+    var stressEl = document.getElementById('liveFeedFilterStress');
+    var audioSentEl = document.getElementById('liveFeedFilterAudioSentiment');
+    var groupEl = document.getElementById('liveFeedGroupBy');
+    return {
+      sort: (sortEl && sortEl.value) || 'newest',
+      eventType: (typeEl && typeEl.value) || '',
+      severity: (sevEl && sevEl.value) || '',
+      camera: (camEl && camEl.value) || '',
+      object: (objEl && objEl.value) || '',
+      emotion: (emoEl && emoEl.value) || '',
+      stress: (stressEl && stressEl.value) || '',
+      audioSentiment: (audioSentEl && audioSentEl.value) || '',
+      groupBy: (groupEl && groupEl.value) || ''
+    };
+  }
+
+  function applySortAndFilter(items, sortKeyName) {
+    var f = getLiveFeedFilters();
+    var list = items.slice();
+    if (f.eventType) list = list.filter(function(it) { return ((it.event_type || it.event || '') + '').toLowerCase() === f.eventType; });
+    if (f.severity) list = list.filter(function(it) { return ((it.severity || '') + '').toLowerCase() === f.severity; });
+    if (f.camera) list = list.filter(function(it) { return String(it.camera_id != null ? it.camera_id : '') === f.camera; });
+    list.sort(function(a, b) {
+      var ka = a[sortKeyName] || '';
+      var kb = b[sortKeyName] || '';
+      return f.sort === 'oldest' ? ka.localeCompare(kb) : kb.localeCompare(ka);
+    });
+    return list;
+  }
+
+  function renderLiveFeedActivityFromCache() {
+    var container = document.getElementById('liveFeedChat');
+    if (!container) return;
+    if (liveFeedActivityCache.length === 0) { updateLiveFeedChat(); return; }
+    var items = applySortAndFilter(liveFeedActivityCache.slice(), 'sortKey');
+    items = items.slice(0, 50);
+    container.innerHTML = '';
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">No detections match filters.</div>';
+      return;
+    }
+    items.forEach(function(it) {
+      var div = document.createElement('div');
+      div.className = 'live-feed-activity-item';
+      var sev = (it.severity || 'medium').toLowerCase();
+      var badgeClass = sev === 'high' ? 'badge-high' : sev === 'medium' ? 'badge-medium' : 'badge-low';
+      var badge = it.type === 'event' ? '<span class="badge ' + badgeClass + '">' + sanitizeText(it.severity || '') + '</span>' : '';
+      div.innerHTML = '<span class="live-feed-activity-time">' + sanitizeText(it.dateStr) + ' ' + sanitizeText(it.time12) + '</span><span class="live-feed-activity-msg">' + badge + sanitizeText(it.msg) + '</span>';
+      container.appendChild(div);
+    });
+  }
+
+  var lastFeedUpdateTime = 0;
+  var liveFeedETagAi = '';
+  var liveFeedETagEvents = '';
+  var lastAiRowsForActivity = [];
+  var lastEvListForActivity = [];
+
+  function setLiveFeedLastUpdated() {
+    lastFeedUpdateTime = Date.now();
+    var el = document.getElementById('liveFeedLastUpdated');
+    if (el) {
+      el.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      el.classList.remove('live-feed-stale');
+    }
+  }
+
+  function updateLiveFeedChat() {
+    var container = document.getElementById('liveFeedChat');
+    if (!container) return;
+    var headersAi = {};
+    var headersEv = {};
+    if (liveFeedETagAi) headersAi['If-None-Match'] = liveFeedETagAi;
+    if (liveFeedETagEvents) headersEv['If-None-Match'] = liveFeedETagEvents;
+    Promise.all([
+      fetch('/get_data?limit=50', Object.assign({}, API, { headers: Object.assign({}, API.headers, headersAi) })).then(function(r) {
+        var etag = r.headers.get('ETag');
+        if (etag) liveFeedETagAi = etag;
+        if (r.status === 304) return null;
+        return r.json();
+      }).catch(function() { return []; }),
+      fetch('/events?limit=50', Object.assign({}, API, { headers: Object.assign({}, API.headers, headersEv) })).then(function(r) {
+        var etag = r.headers.get('ETag');
+        if (etag) liveFeedETagEvents = etag;
+        if (r.status === 304) return null;
+        return r.json();
+      }).catch(function() { return []; })
+    ]).then(function(results) {
+      setLiveFeedLastUpdated();
+      var aiRows = results[0] === null ? lastAiRowsForActivity : (Array.isArray(results[0]) ? results[0] : []);
+      var evList = results[1] === null ? lastEvListForActivity : (Array.isArray(results[1]) ? results[1] : (results[1] && results[1].events ? results[1].events : results[1] || []));
+      if (results[0] !== null) lastAiRowsForActivity = aiRows;
+      if (results[1] !== null) lastEvListForActivity = evList;
+      var items = [];
+      aiRows.forEach(function(row) {
+        var datePart = row.date || '';
+        var timePart = row.time || '';
+        var sortKey = datePart + 'T' + timePart;
+        var lab = toDateAnd12hr(sortKey);
+        var eventLabel = (row.event && row.event !== 'None') ? row.event : 'Detection';
+        var obj = row.object ? ' — ' + row.object : '';
+        if (row.emotion && row.emotion !== 'None') obj += ' (' + row.emotion + ')';
+        items.push({ sortKey: sortKey, dateStr: lab.dateStr, time12: lab.time12, msg: eventLabel + obj, type: 'ai', severity: null, event_type: row.event, camera_id: row.camera_id });
+      });
+      evList.forEach(function(ev) {
+        var ts = ev.timestamp || ev.timestamp_utc || '';
+        var lab = toDateAnd12hr(ts);
+        var eventLabel = (ev.event_type || 'event').replace(/_/g, ' ');
+        var meta = ev.metadata;
+        try { if (typeof meta === 'string') meta = meta ? JSON.parse(meta) : {}; } catch (e) { meta = {}; }
+        var obj = (meta && meta.object) ? ' — ' + meta.object : '';
+        items.push({ sortKey: ts, dateStr: lab.dateStr, time12: lab.time12, msg: eventLabel + obj, type: 'event', severity: ev.severity, event_type: ev.event_type, camera_id: ev.camera_id });
+      });
+      liveFeedActivityCache = items;
+      items = applySortAndFilter(items, 'sortKey');
+      items = items.slice(0, 50);
+      container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">No detections yet. Start recording to see AI activity.</div>';
+        return;
+      }
+      items.forEach(function(it) {
+        var div = document.createElement('div');
+        div.className = 'live-feed-activity-item';
+        var sev = (it.severity || 'medium').toLowerCase();
+        var badgeClass = sev === 'high' ? 'badge-high' : sev === 'medium' ? 'badge-medium' : 'badge-low';
+        var badge = it.type === 'event' ? '<span class="badge ' + badgeClass + '">' + sanitizeText(it.severity || '') + '</span>' : '';
+        div.innerHTML = '<span class="live-feed-activity-time">' + sanitizeText(it.dateStr) + ' ' + sanitizeText(it.time12) + '</span><span class="live-feed-activity-msg">' + badge + sanitizeText(it.msg) + '</span>';
+        container.appendChild(div);
+      });
+    }).catch(function() {
+      if (container) container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">Could not load activity.</div>';
+    });
+  }
+
+  function populateAIDataFilterOptions(rows) {
+    var objects = {}, emotions = {}, stresses = {}, audioSents = {};
+    rows.forEach(function(r) {
+      var o = (r.object || '').toString().trim(); if (o) objects[o] = true;
+      var e = (r.emotion || '').toString().trim(); if (e) emotions[e] = true;
+      var s = (r.stress_level || '').toString().trim(); if (s) stresses[s] = true;
+      var a = (r.audio_sentiment || '').toString().trim(); if (a) audioSents[a] = true;
+    });
+    function setOptions(selId, map, allLabel) {
+      var sel = document.getElementById(selId); if (!sel) return;
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">' + allLabel + '</option>' + Object.keys(map).sort().map(function(v) { return '<option value="' + sanitizeText(v) + '">' + sanitizeText(v) + '</option>'; }).join('');
+      if (map[cur]) sel.value = cur;
+    }
+    setOptions('liveFeedFilterObject', objects, 'All objects');
+    setOptions('liveFeedFilterEmotion', emotions, 'All emotions');
+    setOptions('liveFeedFilterStress', stresses, 'All stress');
+    setOptions('liveFeedFilterAudioSentiment', audioSents, 'All audio sentiment');
+  }
+  function buildAIDataRowHTML(row, lab, fieldOrder) {
+    var keysInOrder = [];
+    fieldOrder.forEach(function(k) { if (k in row && row[k] !== null && row[k] !== undefined && row[k] !== '') keysInOrder.push(k); });
+    Object.keys(row).forEach(function(k) {
+      if (k === '_sortKey' || keysInOrder.indexOf(k) >= 0) return;
+      if (row[k] === null || row[k] === undefined || row[k] === '') return;
+      keysInOrder.push(k);
+    });
+    var statsHtml = keysInOrder.map(function(k) {
+      var v = row[k];
+      var val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return '<div class="ai-stat" draggable="true" data-field="' + sanitizeText(k) + '" role="button" tabindex="0" aria-label="Field ' + sanitizeText(k) + '">' +
+        '<span class="ai-stat-label">' + sanitizeText(k) + '</span>' +
+        '<span class="ai-stat-val">' + sanitizeText(val) + '</span></div>';
+    }).join('');
+    return '<div class="ai-row-time">' + sanitizeText(lab.dateStr) + ' ' + sanitizeText(lab.time12) + '</div><div class="ai-row-stats">' + statsHtml + '</div>';
+  }
+  function renderLiveFeedAIDataFromCache() {
+    var container = document.getElementById('liveFeedAIData');
+    if (!container || !liveFeedAiRowsCache.length) return;
+    var f = getLiveFeedFilters();
+    var list = liveFeedAiRowsCache.map(function(row) {
+      row._sortKey = (row.date || '') + 'T' + (row.time || '');
+      return row;
+    });
+    list = applySortAndFilter(list, '_sortKey');
+    if (f.object) list = list.filter(function(r) { return String(r.object || '') === f.object; });
+    if (f.emotion) list = list.filter(function(r) { return String(r.emotion || '') === f.emotion; });
+    if (f.stress) list = list.filter(function(r) { return String(r.stress_level || '') === f.stress; });
+    if (f.audioSentiment) list = list.filter(function(r) { return String(r.audio_sentiment || '') === f.audioSentiment; });
+    var fieldOrder = getAIDataFieldOrder();
+    var groupBy = f.groupBy;
+    var groups = null;
+    if (groupBy && list.length) {
+      groups = {};
+      list.forEach(function(row) {
+        var gv = String(row[groupBy] != null ? row[groupBy] : '—');
+        if (!groups[gv]) groups[gv] = [];
+        groups[gv].push(row);
+      });
+    }
+    container.innerHTML = '';
+    if (list.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">No AI data match filters.</div>';
+      return;
+    }
+    function appendRow(row) {
+      var lab = toDateAnd12hr(row._sortKey);
+      var div = document.createElement('div');
+      div.className = 'live-feed-ai-row';
+      div.innerHTML = buildAIDataRowHTML(row, lab, fieldOrder);
+      container.appendChild(div);
+    }
+    if (groups) {
+      Object.keys(groups).sort().forEach(function(gv) {
+        var cap = document.createElement('div');
+        cap.className = 'live-feed-aidata-group-cap';
+        cap.style.cssText = 'font-size:0.75rem;font-weight:600;color:var(--muted);margin:0.75rem 0 0.35rem 0;text-transform:uppercase;';
+        cap.textContent = (groupBy === 'date' ? gv : groupBy + ': ' + gv);
+        container.appendChild(cap);
+        groups[gv].forEach(appendRow);
+      });
+    } else
+      list.forEach(appendRow);
+    attachAIDataDragListeners(container);
+  }
+  function updateLiveFeedAIData(useCache) {
+    var container = document.getElementById('liveFeedAIData');
+    if (!container) return;
+    if (useCache && liveFeedAiRowsCache.length) {
+      renderLiveFeedAIDataFromCache();
+      return;
+    }
+    var f = getLiveFeedFilters();
+    var url = '/get_data?limit=100';
+    if (f.camera) url += '&camera_id=' + encodeURIComponent(f.camera);
+    if (f.eventType) url += '&event_type=' + encodeURIComponent(f.eventType);
+    fetch(url, API).then(function(r) { return r.json(); }).then(function(rows) {
+      setLiveFeedLastUpdated();
+      liveFeedAiRowsCache = Array.isArray(rows) ? rows : [];
+      var list = liveFeedAiRowsCache.map(function(row) {
+        row._sortKey = (row.date || '') + 'T' + (row.time || '');
+        return row;
+      });
+      list = applySortAndFilter(list, '_sortKey');
+      if (f.object) list = list.filter(function(r) { return String(r.object || '') === f.object; });
+      if (f.emotion) list = list.filter(function(r) { return String(r.emotion || '') === f.emotion; });
+      if (f.stress) list = list.filter(function(r) { return String(r.stress_level || '') === f.stress; });
+      if (f.audioSentiment) list = list.filter(function(r) { return String(r.audio_sentiment || '') === f.audioSentiment; });
+      populateAIDataFilterOptions(liveFeedAiRowsCache);
+      var fieldOrder = getAIDataFieldOrder();
+      var groupBy = f.groupBy;
+      var rowsToRender = list;
+      var groups = null;
+      if (groupBy && list.length) {
+        groups = {};
+        list.forEach(function(row) {
+          var gv = String(row[groupBy] != null ? row[groupBy] : '—');
+          if (!groups[gv]) groups[gv] = [];
+          groups[gv].push(row);
+        });
+      }
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">No AI data match filters. Adjust filters or start recording.</div>';
+        return;
+      }
+      function appendRow(row) {
+        var lab = toDateAnd12hr(row._sortKey);
+        var div = document.createElement('div');
+        div.className = 'live-feed-ai-row';
+        div.innerHTML = buildAIDataRowHTML(row, lab, fieldOrder);
+        container.appendChild(div);
+      }
+      if (groups) {
+        Object.keys(groups).sort().forEach(function(gv) {
+          var cap = document.createElement('div');
+          cap.className = 'live-feed-aidata-group-cap';
+          cap.style.cssText = 'font-size:0.75rem;font-weight:600;color:var(--muted);margin:0.75rem 0 0.35rem 0;text-transform:uppercase;';
+          cap.textContent = (groupBy === 'date' ? gv : groupBy + ': ' + gv);
+          container.appendChild(cap);
+          groups[gv].forEach(appendRow);
+        });
+      } else
+        rowsToRender.forEach(appendRow);
+      attachAIDataDragListeners(container);
+    }).catch(function() {
+      if (container) container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">Could not load AI data.</div>';
+    });
+  }
+  function attachAIDataDragListeners(container) {
+    if (!container) return;
+    var draggedKey = null;
+    var dragOverEl = null;
+    container.addEventListener('dragstart', function(e) {
+      var stat = e.target.closest('.ai-stat');
+      if (!stat || !stat.dataset.field) return;
+      draggedKey = stat.dataset.field;
+      stat.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', draggedKey);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    container.addEventListener('dragend', function(e) {
+      container.querySelectorAll('.ai-stat.dragging, .ai-stat.drag-over').forEach(function(el) { el.classList.remove('dragging', 'drag-over'); });
+      draggedKey = null;
+      dragOverEl = null;
+    });
+    container.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      var stat = e.target.closest('.ai-stat');
+      if (!stat || !stat.dataset.field || stat.dataset.field === draggedKey) return;
+      container.querySelectorAll('.ai-stat.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+      stat.classList.add('drag-over');
+      dragOverEl = stat;
+    });
+    container.addEventListener('drop', function(e) {
+      e.preventDefault();
+      var stat = e.target.closest('.ai-stat');
+      if (!stat || !draggedKey || stat.dataset.field === draggedKey) return;
+      var targetKey = stat.dataset.field;
+      var order = getAIDataFieldOrder();
+      var si = order.indexOf(draggedKey);
+      var ti = order.indexOf(targetKey);
+      if (si === -1) order.push(draggedKey);
+      else order.splice(si, 1);
+      ti = order.indexOf(targetKey);
+      if (ti === -1) order.push(draggedKey);
+      else order.splice(ti, 0, draggedKey);
+      setAIDataFieldOrder(order);
+      updateLiveFeedAIData(true);
+    });
+  }
+  document.getElementById('liveFeedAidataResetOrder') && document.getElementById('liveFeedAidataResetOrder').addEventListener('click', function() {
+    setAIDataFieldOrder(AI_DATA_CANONICAL_FIELDS.slice());
+    updateLiveFeedAIData(true);
+  });
+  [ 'liveFeedFilterObject', 'liveFeedFilterEmotion', 'liveFeedFilterStress', 'liveFeedFilterAudioSentiment', 'liveFeedGroupBy' ].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function() { if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData(true); });
+  });
+
+  function updateLiveFeedEvents() {
+    var container = document.getElementById('liveFeedEvents');
+    if (!container) return;
+    var f = getLiveFeedFilters();
+    var url = '/events?limit=100';
+    if (f.camera) url += '&camera_id=' + encodeURIComponent(f.camera);
+    if (f.eventType) url += '&event_type=' + encodeURIComponent(f.eventType);
+    if (f.severity) url += '&severity=' + encodeURIComponent(f.severity);
+    fetch(url, API).then(function(r) { return r.json(); }).then(function(rows) {
+      setLiveFeedLastUpdated();
+      liveFeedEventsCache = Array.isArray(rows) ? rows : (rows && rows.events) ? rows.events : [];
+      var withSort = liveFeedEventsCache.map(function(ev) {
+        ev._sortKey = ev.timestamp || ev.timestamp_utc || '';
+        return ev;
+      });
+      withSort = applySortAndFilter(withSort, '_sortKey');
+      container.innerHTML = '';
+      if (withSort.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">No events. Adjust filters.</div>';
+        return;
+      }
+      withSort.forEach(function(ev) {
+        var lab = toDateAnd12hr(ev._sortKey);
+        var div = document.createElement('div');
+        div.className = 'live-feed-event-row';
+        var parts = ['id', 'event_type', 'camera_id', 'site_id', 'timestamp', 'timestamp_utc', 'severity', 'acknowledged_by', 'acknowledged_at', 'metadata'];
+        var statsHtml = '';
+        parts.forEach(function(k) {
+          var v = ev[k];
+          if (v === null || v === undefined) return;
+          var val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+          if (val.length > 80) val = val.slice(0, 77) + '…';
+          statsHtml += '<div class="ai-stat"><span class="ai-stat-label">' + sanitizeText(k) + ':</span><span class="ai-stat-val">' + sanitizeText(val) + '</span></div>';
+        });
+        div.innerHTML = '<div class="ev-row-time">' + sanitizeText(lab.dateStr) + ' ' + sanitizeText(lab.time12) + ' — ' + sanitizeText(ev.event_type || '') + '</div><div class="ev-row-stats">' + statsHtml + '</div>';
+        container.appendChild(div);
+      });
+    }).catch(function() {
+      if (container) container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">Could not load events.</div>';
+    });
+  }
+
+  function setLiveFeedTab(tab) {
+    liveFeedCurrentTab = tab;
+    document.querySelectorAll('.live-feed-activity-tab').forEach(function(btn) {
+      var t = btn.getAttribute('data-tab');
+      btn.classList.toggle('active', t === tab);
+      btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+    });
+    document.getElementById('liveFeedPanelActivity').classList.toggle('active', tab === 'activity');
+    document.getElementById('liveFeedPanelAidata').classList.toggle('active', tab === 'aidata');
+    document.getElementById('liveFeedPanelSpeech').classList.toggle('active', tab === 'speech');
+    document.getElementById('liveFeedPanelEvents').classList.toggle('active', tab === 'events');
+    if (tab === 'aidata') updateLiveFeedAIData();
+    if (tab === 'speech') updateLiveFeedSpeech();
+    if (tab === 'events') updateLiveFeedEvents();
+  }
+
+  function updateLiveFeedSpeech() {
+    var container = document.getElementById('liveFeedSpeech');
+    if (!container) return;
+    container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">Loading…</div>';
+    fetch('/get_data?limit=200', API).then(function(r) { return r.json(); }).then(function(rows) {
+      setLiveFeedLastUpdated();
+      var list = Array.isArray(rows) ? rows : [];
+      var withSpeech = list.filter(function(row) {
+        var t = (row.audio_transcription || row.speech_text || row.transcription || '').toString().trim();
+        return t && t.toLowerCase() !== 'none';
+      });
+      withSpeech.sort(function(a, b) {
+        var ka = (a.date || '') + 'T' + (a.time || '');
+        var kb = (b.date || '') + 'T' + (b.time || '');
+        return kb.localeCompare(ka);
+      });
+      container.innerHTML = '';
+      if (withSpeech.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;text-align:left;">' +
+          '<p style="margin:0 0 0.5rem 0;"><strong>No speech transcriptions yet.</strong></p>' +
+          '<ul style="margin:0;padding-left:1.2rem;font-size:0.85rem;">' +
+          '<li>Turn <strong>● Record</strong> ON (Live panel or nav) — transcriptions are only saved while recording.</li>' +
+          '<li>Turn <strong>🎤 Audio</strong> ON (footer or nav).</li>' +
+          '<li>Speak into the microphone; entries appear here as the pipeline captures speech.</li>' +
+          '<li>Server needs <code>ENABLE_AUDIO=1</code> in .env and a working microphone.</li>' +
+          '</ul></div>';
+        return;
+      }
+      withSpeech.forEach(function(row) {
+        var lab = toDateAnd12hr((row.date || '') + 'T' + (row.time || ''));
+        var text = (row.audio_transcription || row.speech_text || row.transcription || '').toString();
+        var extra = [];
+        if (row.audio_sentiment && String(row.audio_sentiment).toLowerCase() !== 'none') extra.push('Sentiment: ' + row.audio_sentiment);
+        if (row.audio_emotion && String(row.audio_emotion).toLowerCase() !== 'none') extra.push('Emotion: ' + row.audio_emotion);
+        var div = document.createElement('div');
+        div.className = 'live-feed-activity-item';
+        div.innerHTML = '<span class="live-feed-activity-time">' + sanitizeText(lab.dateStr) + ' ' + sanitizeText(lab.time12) + '</span><span class="live-feed-activity-msg">' + sanitizeText(text) + (extra.length ? ' <small>(' + extra.join(', ') + ')</small>' : '') + '</span>';
+        container.appendChild(div);
+      });
+    }).catch(function() {
+      if (container) container.innerHTML = '<div class="empty-state" style="margin:0;padding:0.75rem;">Could not load speech log.</div>';
+    });
+  }
+
+  function refreshLiveFeedCameraFilter() {
+    var sel = document.getElementById('liveFeedFilterCamera');
+    if (!sel) return;
+    var current = sel.value;
+    sel.innerHTML = '<option value="">All</option>';
+    (streams || []).forEach(function(s) {
+      var id = s.id || '';
+      var name = s.name || id;
+      var opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      if (id === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  document.querySelectorAll('.live-feed-activity-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() { setLiveFeedTab(this.getAttribute('data-tab')); });
+  });
+  var liveFeedRefreshBtn = document.getElementById('liveFeedRefresh');
+  if (liveFeedRefreshBtn) liveFeedRefreshBtn.addEventListener('click', function() {
+    if (liveFeedCurrentTab === 'activity') updateLiveFeedChat();
+    else if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData();
+    else if (liveFeedCurrentTab === 'speech') updateLiveFeedSpeech();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  });
+  document.getElementById('liveFeedSort').addEventListener('change', function() {
+    if (liveFeedCurrentTab === 'activity') renderLiveFeedActivityFromCache();
+    else if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  });
+  document.getElementById('liveFeedFilterType').addEventListener('change', function() {
+    if (liveFeedCurrentTab === 'activity') renderLiveFeedActivityFromCache();
+    else if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  });
+  document.getElementById('liveFeedFilterSeverity').addEventListener('change', function() {
+    if (liveFeedCurrentTab === 'activity') renderLiveFeedActivityFromCache();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  });
+  document.getElementById('liveFeedFilterCamera').addEventListener('change', function() {
+    if (liveFeedCurrentTab === 'activity') renderLiveFeedActivityFromCache();
+    else if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  });
+
+  function formatUptime(sec) {
+    if (sec == null || sec < 0) return '—';
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    return h + 'h ' + m + 'm';
+  }
+
+  // ---------- Streams (dynamic from API) ----------
+  function renderStreams(data) {
+    streams = Array.isArray(data) ? data : [];
+    const grid = document.getElementById('live');
+    const primaryImg = document.getElementById('primaryStreamImg');
+    const primaryPlaceholder = document.getElementById('primaryStreamPlaceholder');
+    const primaryCaption = document.getElementById('primaryStreamCaption');
+    if (typeof refreshLiveFeedCameraFilter === 'function') refreshLiveFeedCameraFilter();
+    if (streams.length > 0 && primaryImg && primaryPlaceholder && primaryCaption) {
+      const first = streams[0];
+      const name = first.name || ('Camera ' + first.id);
+      const feedUrl = first.url || (first.id === 'thermal' ? '/thermal_feed' : '/video_feed/' + first.id);
+      primaryImg.src = feedUrl;
+      primaryImg.alt = name + ' live feed';
+      primaryImg.style.display = 'block';
+      primaryPlaceholder.style.display = 'none';
+      primaryCaption.textContent = name;
+    } else if (primaryImg && primaryPlaceholder && primaryCaption) {
+      primaryImg.style.display = 'none';
+      primaryImg.src = '';
+      primaryPlaceholder.style.display = 'flex';
+      primaryPlaceholder.textContent = 'No camera configured. Set CAMERA_SOURCES or use Detect cameras.';
+      primaryCaption.textContent = 'No feed';
+    }
+    if (!grid) return;
+    grid.innerHTML = '';
+    if (streams.length === 0) {
+      grid.innerHTML = '<div class="empty-state">No streams configured. Set CAMERA_SOURCES or use Detect cameras.</div>';
+      return;
+    }
+    var ptzBtnLeft = document.getElementById('btnPtzLeft');
+    if (ptzBtnLeft) { ptzBtnLeft.disabled = false; }
+    var ptzBtnRight = document.getElementById('btnPtzRight');
+    if (ptzBtnRight) { ptzBtnRight.disabled = false; }
+    var ptzBtnStop = document.getElementById('btnPtzStop');
+    if (ptzBtnStop) { ptzBtnStop.disabled = false; }
+    streams.forEach(function(s) {
+      const camId = s.id;
+      const name = s.name || ('Camera ' + camId);
+      const isThermal = camId === 'thermal';
+      const feedUrl = s.url || (isThermal ? '/thermal_feed' : '/video_feed/' + camId);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.setAttribute('data-cam', camId);
+      card.setAttribute('role', 'region');
+      card.setAttribute('aria-label', name + ' stream');
+      snapshotsByCam[camId] = snapshotsByCam[camId] || [];
+      card.innerHTML =
+        '<h3><span class="live-pill">LIVE</span>' + sanitizeText(name) + '</h3>' +
+        '<div class="stream-viewer" id="streamViewer' + sanitizeText(camId) + '" tabindex="0" title="Focus and press F for fullscreen">' +
+        '<img id="img' + sanitizeText(camId) + '" src="' + sanitizeText(feedUrl) + '" alt="' + sanitizeText(name) + '" />' +
+        '<button type="button" class="btn-fullscreen" aria-label="Fullscreen">Fullscreen</button></div>' +
+        '<div class="audio-toggle"><label><input type="checkbox" class="audioSwitch" data-cam="' + sanitizeText(camId) + '" aria-label="Toggle audio for ' + sanitizeText(name) + '" /> Audio On/Off</label></div>' +
+        '<button type="button" class="btn btn-sm" onclick="window.takeSnapshot(\'' + sanitizeText(camId).replace(/'/g, "\\'") + '\')">Take Snapshot</button>' +
+        '<div class="snapshots" id="snapshots' + sanitizeText(camId) + '" aria-label="Snapshots"></div>' +
+        '<button type="button" class="btn btn-sm" onclick="window.exportAllDataForCamera(\'' + sanitizeText(camId).replace(/'/g, "\\'") + '\')">Export data + snapshots</button>' +
+        '<div class="video-downloads" id="videoDownloads' + sanitizeText(camId) + '"></div>';
+      grid.appendChild(card);
+      const viewer = card.querySelector('.stream-viewer');
+      const fsBtn = card.querySelector('.btn-fullscreen');
+      if (viewer && fsBtn) {
+        fsBtn.addEventListener('click', function() {
+          if (!document.fullscreenElement) {
+            viewer.requestFullscreen().catch(function() {});
+          } else {
+            document.exitFullscreen();
+          }
+        });
+      }
+      const audioCb = card.querySelector('.audioSwitch');
+      if (audioCb) {
+        audioCb.checked = false;
+        audioCb.addEventListener('change', function(e) {
+          const img = document.getElementById('img' + e.target.dataset.cam);
+          if (img) img.muted = !e.target.checked;
+        });
+      }
+    });
+  }
+
+  window.takeSnapshot = function(camId) {
+    const img = document.getElementById('img' + camId);
+    if (!img || !img.src) { alert('Feed not loaded.'); return; }
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = function() {
+        canvas.width = image.naturalWidth || 320;
+        canvas.height = image.naturalHeight || 180;
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(function(blob) {
+          if (!blob) return;
+          const list = snapshotsByCam[camId] || [];
+          if (list.length >= maxSnapshots) list.shift();
+          list.push(blob);
+          snapshotsByCam[camId] = list;
+          const container = document.getElementById('snapshots' + camId);
+          if (container) {
+            container.innerHTML = '';
+            list.forEach(function(b, i) {
+              const im = document.createElement('img');
+              im.src = URL.createObjectURL(b);
+              im.alt = 'Snapshot ' + (i + 1);
+              container.appendChild(im);
+            });
+          }
+          const s = streams.find(function(x) { return x.id === camId; });
+          addExtendedLog('Snapshot: ' + (s ? s.name : camId));
+        }, 'image/png');
+      };
+      image.onerror = function() { alert('Snapshot failed.'); };
+      image.src = img.src;
+    } catch (e) {
+      alert('Error: ' + (e && e.message));
+    }
+  };
+
+  window.exportAllDataForCamera = function(camId) {
+    const s = streams.find(function(x) { return x.id === camId; });
+    const name = s ? s.name : camId;
+    if (typeof JSZip === 'undefined') {
+      alert('JSZip not loaded. Export includes snapshots only.');
+      return;
+    }
+    const zip = new JSZip();
+    const list = snapshotsByCam[camId] || [];
+    if (list.length === 0) {
+      zip.file('snapshots.txt', 'No snapshots.');
+    } else {
+      const folder = zip.folder('snapshots');
+      list.forEach(function(blob, i) {
+        folder.file('snapshot_' + (i + 1) + '.png', blob);
+      });
+    }
+    zip.file('camera_info.txt', 'Camera: ' + name + '\nId: ' + camId + '\nExported: ' + new Date().toISOString());
+    zip.generateAsync({ type: 'blob' }).then(function(content) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = (name.replace(/[^a-z0-9]/gi, '_') || 'camera') + '_export.zip';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      addExtendedLog('Exported data for ' + name);
+    });
+  };
+
+  function updateFullscreenButtonLabels() {
+    var fsEl = document.fullscreenElement;
+    document.querySelectorAll('.stream-viewer .btn-fullscreen').forEach(function(btn) {
+      var viewer = btn.closest('.stream-viewer');
+      var inFs = fsEl && fsEl === viewer;
+      btn.textContent = inFs ? 'Exit fullscreen' : 'Fullscreen';
+      btn.setAttribute('aria-label', inFs ? 'Exit fullscreen' : 'Fullscreen');
+    });
+  }
+  document.addEventListener('fullscreenchange', updateFullscreenButtonLabels);
+
+  function refreshLiveFeedCurrentTab() {
+    setLiveFeedLastUpdated();
+    if (liveFeedCurrentTab === 'activity') updateLiveFeedChat();
+    else if (liveFeedCurrentTab === 'aidata') updateLiveFeedAIData();
+    else if (liveFeedCurrentTab === 'speech') updateLiveFeedSpeech();
+    else if (liveFeedCurrentTab === 'events') updateLiveFeedEvents();
+  }
+
+  updateLiveFeedChat();
+  setInterval(updateLiveFeedChat, 8000);
+
+  (function() {
+    try {
+      var es = new EventSource('/api/stream');
+      es.onmessage = function(e) {
+        try {
+          var data = JSON.parse(e.data);
+          if (!data) return;
+          if (data.type === 'new_event' || data.type === 'activity_update') {
+            refreshLiveFeedCurrentTab();
+            if (window.updateChart) window.updateChart();
+          } else if (data.type === 'recording_toggle' && data.recording !== undefined) {
+            setRecordingUI(!!data.recording);
+          } else if (data.type === 'audio_toggle' && data.audio_enabled !== undefined) {
+            setNavMicIndicator(!!data.audio_enabled);
+          }
+        } catch (err) {}
+      };
+      es.onerror = function() { es.close(); };
+    } catch (err) {}
+  })();
+
+  setInterval(function() {
+    var el = document.getElementById('liveFeedLastUpdated');
+    if (el && lastFeedUpdateTime && (Date.now() - lastFeedUpdateTime > 30000)) el.classList.add('live-feed-stale');
+  }, 5000);
+
+  (function() {
+    var target = document.getElementById('liveActivityFullscreenTarget');
+    var btn = document.getElementById('liveActivityFullscreenBtn');
+    if (!target || !btn) return;
+    function exitFs() {
+      try {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else if (document.webkitFullscreenElement) document.webkitExitFullscreen();
+        else if (document.mozFullScreenElement) document.mozCancelFullScreen();
+        else if (document.msFullscreenElement) document.msExitFullscreen();
+      } catch (e) {}
+      btn.textContent = 'Fullscreen';
+      btn.setAttribute('aria-label', 'View activity fullscreen');
+    }
+    function enterFs() {
+      try {
+        if (target.requestFullscreen) target.requestFullscreen();
+        else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+        else if (target.mozRequestFullScreen) target.mozRequestFullScreen();
+        else if (target.msRequestFullscreen) target.msRequestFullscreen();
+      } catch (e) {}
+      btn.textContent = 'Exit fullscreen';
+      btn.setAttribute('aria-label', 'Exit fullscreen');
+    }
+    btn.addEventListener('click', function() {
+      var inFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if (inFs) exitFs(); else enterFs();
+    });
+    document.addEventListener('fullscreenchange', function() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+        btn.textContent = 'Fullscreen';
+        btn.setAttribute('aria-label', 'View activity fullscreen');
+      }
+    });
+  })();
+
+  (function() {
+    var toggle = document.getElementById('recordingOptionsToggle');
+    var panel = document.getElementById('recordingOptionsPanel');
+    var applyBtn = document.getElementById('recordingOptionsApply');
+    if (!toggle || !panel) return;
+    toggle.addEventListener('click', function() {
+      var open = panel.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    function loadRecordingConfig() {
+      fetch('/recording_config', API).then(function(r) { return r.json(); }).then(function(c) {
+        if (!c) return;
+        if (c.event_types) {
+          var et = c.event_types;
+          if (document.getElementById('gatherMotion')) document.getElementById('gatherMotion').checked = et.indexOf('motion') >= 0;
+          if (document.getElementById('gatherLoitering')) document.getElementById('gatherLoitering').checked = et.indexOf('loitering') >= 0;
+          if (document.getElementById('gatherLineCross')) document.getElementById('gatherLineCross').checked = et.indexOf('line_cross') >= 0;
+        }
+        if (c.capture_audio != null && document.getElementById('gatherAudio')) document.getElementById('gatherAudio').checked = !!c.capture_audio;
+        if (c.capture_thermal != null && document.getElementById('gatherThermal')) document.getElementById('gatherThermal').checked = !!c.capture_thermal;
+        if (c.capture_wifi != null && document.getElementById('gatherWifi')) document.getElementById('gatherWifi').checked = !!c.capture_wifi;
+        if (c.ai_detail && document.getElementById('aiDetail' + (c.ai_detail === 'minimal' ? 'Minimal' : 'Full'))) document.getElementById('aiDetail' + (c.ai_detail === 'minimal' ? 'Minimal' : 'Full')).checked = true;
+      }).catch(function() {});
+    }
+    loadRecordingConfig();
+    if (applyBtn) applyBtn.addEventListener('click', function() {
+      var payload = {
+        event_types: [],
+        capture_audio: !!document.getElementById('gatherAudio').checked,
+        capture_thermal: !!document.getElementById('gatherThermal').checked,
+        capture_wifi: !!document.getElementById('gatherWifi').checked,
+        ai_detail: document.getElementById('aiDetailFull').checked ? 'full' : 'minimal'
+      };
+      if (document.getElementById('gatherMotion').checked) payload.event_types.push('motion');
+      if (document.getElementById('gatherLoitering').checked) payload.event_types.push('loitering');
+      if (document.getElementById('gatherLineCross').checked) payload.event_types.push('line_cross');
+      fetch('/recording_config', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function(r) { return r.json(); }).then(function() {
+        if (typeof addExtendedLog === 'function') addExtendedLog('Recording options updated. Applies to next analysis cycle.');
+      }).catch(function() {});
+    });
+  })();
+
+  (function() {
+    var canvas = document.getElementById('audioVizCanvas');
+    var toggle = document.getElementById('audioVizToggle');
+    var levelMeter = document.getElementById('audioLevelMeter');
+    if (!canvas || !toggle) return;
+    var audioCtx = null;
+    var analyser = null;
+    var stream = null;
+    var rafId = null;
+    var bufferLength = 0;
+    var dataArray = null;
+    var smoothedLevel = 0;
+    var SMOOTH = 0.25;
+    function draw() {
+      if (!analyser || !canvas) return;
+      rafId = requestAnimationFrame(draw);
+      analyser.getByteTimeDomainData(dataArray);
+      var sumSq = 0;
+      for (var i = 0; i < bufferLength; i++) {
+        var n = (dataArray[i] - 128) / 128;
+        sumSq += n * n;
+      }
+      var rms = Math.sqrt(sumSq / bufferLength);
+      smoothedLevel = SMOOTH * rms + (1 - SMOOTH) * smoothedLevel;
+      if (levelMeter) {
+        var pct = Math.min(100, Math.round(smoothedLevel * 300));
+        levelMeter.style.height = pct + '%';
+      }
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width;
+      var h = canvas.height;
+      ctx.fillStyle = 'var(--surface)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'var(--accent)';
+      ctx.beginPath();
+      var sliceWidth = w / bufferLength;
+      var x = 0;
+      for (var i = 0; i < bufferLength; i++) {
+        var v = (dataArray[i] - 128) / 128;
+        var y = h / 2 + v * (h / 2 - 2);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+    }
+    function stop() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      smoothedLevel = 0;
+      if (levelMeter) levelMeter.style.height = '0%';
+      if (stream) stream.getTracks().forEach(function(t) { t.stop(); });
+      stream = null;
+      if (audioCtx) audioCtx.close().catch(function() {});
+      audioCtx = null;
+      analyser = null;
+      toggle.textContent = 'Enable mic';
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'var(--surface)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    function getGetUserMedia() {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function')
+        return navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      var legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (legacy) return function(c) { return new Promise(function(res, rej) { legacy.call(navigator, c, res, rej); }); };
+      return null;
+    }
+    function setMicUnsupportedReason() {
+      if (typeof window.isSecureContext !== 'undefined' && !window.isSecureContext) {
+        toggle.textContent = 'Mic: use HTTPS or localhost';
+        toggle.title = 'Microphone requires a secure context (HTTPS or http://127.0.0.1 or http://localhost). Open this page via https:// or http://localhost:' + (location.port || '5000') + ' to enable.';
+        return;
+      }
+      if (!getGetUserMedia()) {
+        toggle.textContent = 'Mic not supported';
+        toggle.title = 'Your browser does not support getUserMedia. Try Chrome, Firefox, or Safari over HTTPS or localhost.';
+        return;
+      }
+      toggle.textContent = 'Enable mic';
+      toggle.title = '';
+    }
+    setMicUnsupportedReason();
+    toggle.addEventListener('click', function() {
+      if (stream) { stop(); return; }
+      var gum = getGetUserMedia();
+      if (!gum) {
+        setMicUnsupportedReason();
+        return;
+      }
+      if (typeof window.isSecureContext !== 'undefined' && !window.isSecureContext) {
+        toggle.textContent = 'Mic: use HTTPS or localhost';
+        toggle.title = 'Open via https:// or http://localhost to use the microphone.';
+        return;
+      }
+      gum({ audio: true, video: false }).then(function(s) {
+        stream = s;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var src = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        src.connect(analyser);
+        toggle.textContent = 'Disable mic';
+        toggle.title = 'Click to turn off microphone';
+        draw();
+      }).catch(function(err) {
+        var name = (err && err.name) || '';
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError')
+          toggle.textContent = 'Enable mic (blocked)';
+        else if (name === 'NotFoundError')
+          toggle.textContent = 'Enable mic (no mic)';
+        else
+          toggle.textContent = 'Enable mic (error)';
+        toggle.title = (err && err.message) ? err.message : 'Allow microphone in browser settings and try again.';
+      });
+    });
+  })();
+
+  (function() {
+    var container = document.getElementById('aiPipelineState');
+    if (!container) return;
+    function renderPipeline(state) {
+      if (!state || !container) return;
+      var html = '';
+      if (state.last_event) html += '<p style="margin:0 0 0.5rem 0;font-size:0.75rem;"><strong>Last event:</strong> ' + sanitizeText(state.last_event) + '</p>';
+      if (state.current_step) html += '<p style="margin:0 0 0.35rem 0;font-size:0.7rem;color:var(--muted);">Current: ' + sanitizeText(state.current_step) + '</p>';
+      if (state.steps && state.steps.length) {
+        state.steps.slice(-8).forEach(function(s) {
+          var conf = s.confidence_estimate != null ? ' (' + Math.round(100 * s.confidence_estimate) + '%)' : '';
+          html += '<div class="ai-pipeline-step"><span class="step-name">' + sanitizeText(s.name || '') + '</span><span class="step-detail">' + sanitizeText((s.detail || s.message || '').slice(0, 80)) + '</span><span class="step-conf">' + sanitizeText(conf) + '</span></div>';
+        });
+      }
+      if (!html) html = 'Start recording to see pipeline.';
+      container.innerHTML = html;
+    }
+    function poll() {
+      fetch('/api/ai_pipeline_state', API).then(function(r) { return r.json(); }).then(renderPipeline).catch(function() {});
+    }
+    poll();
+    setInterval(poll, 2000);
+  })();
+
+  (function() {
+    var canvas = document.getElementById('liveActivityChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    var buckets = 12;
+    var labels = [];
+    for (var i = buckets - 1; i >= 0; i--) labels.push('-' + (i * 5) + 'm');
+    labels.reverse();
+    var chart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{ label: 'Events', data: [], borderColor: 'var(--accent)', backgroundColor: 'rgba(20, 184, 166, 0.1)', fill: true, tension: 0.2 }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'var(--border)' }, ticks: { color: 'var(--muted)', maxTicksLimit: 6 } },
+          y: { min: 0, grid: { color: 'var(--border)' }, ticks: { color: 'var(--muted)' } }
+        }
+      }
+    });
+    function toSlot(ts) {
+      var t = new Date(ts).getTime();
+      var now = Date.now();
+      var diff = (now - t) / 60000;
+      if (diff < 0 || diff > 60) return -1;
+      return Math.floor((60 - diff) / 5);
+    }
+    function updateChart() {
+      var now = Date.now();
+      var counts = [];
+      for (var i = 0; i < buckets; i++) counts.push(0);
+      Promise.all([
+        fetch('/events?limit=300', API).then(function(r) { return r.json(); }).catch(function() { return []; }),
+        fetch('/get_data?limit=200', API).then(function(r) { return r.json(); }).catch(function() { return []; })
+      ]).then(function(res) {
+        var evList = Array.isArray(res[0]) ? res[0] : (res[0].events || res[0] || []);
+        var aiList = Array.isArray(res[1]) ? res[1] : [];
+        evList.forEach(function(e) {
+          var ts = e.timestamp || e.timestamp_utc || '';
+          var slot = toSlot(ts);
+          if (slot >= 0 && slot < buckets) counts[slot]++;
+        });
+        aiList.forEach(function(r) {
+          var ts = (r.date || '') + 'T' + (r.time || '');
+          var slot = toSlot(ts);
+          if (slot >= 0 && slot < buckets) counts[slot]++;
+        });
+        chart.data.datasets[0].data = counts;
+        chart.update('none');
+      });
+    }
+    updateChart();
+    setInterval(updateChart, 30000);
+    window.updateChart = updateChart;
+  })();
+
+  fetch('/streams', API).then(function(r) { return r.json(); }).then(renderStreams).catch(function() {
+    var g = document.getElementById('live');
+    if (g) g.innerHTML = '<div class="empty-state">Failed to load streams.</div>';
+  });
+
+  // ---------- System status ----------
+  function renderStatus(data) {
+    const el = document.getElementById('statusContent');
+    if (!el) return;
+    if (!data) {
+      el.innerHTML = '<p class="empty-state">Failed to load status.</p>';
+      return;
+    }
+    const statusClass = data.status === 'ok' ? 'status-ok' : 'status-warn';
+    const camList = (data.cameras || []).map(function(c) {
+      const st = c.status === 'ok' ? 'status-ok' : (c.status === 'no_signal' ? 'status-warn' : 'status-error');
+      const label = c.status === 'ok' ? 'Online' : (c.status === 'no_signal' ? 'No signal' : 'Offline');
+      return '<li><strong>' + sanitizeText(c.name) + ':</strong> <span class="' + st + '">' + label + '</span>' + (c.resolution ? ' ' + sanitizeText(c.resolution) : '') + '</li>';
+    }).join('');
+    var extra = '';
+    if (data.storage_used_bytes != null) {
+      var mb = Math.round(data.storage_used_bytes / (1024 * 1024));
+      extra += '<li><strong>Storage:</strong> ' + mb + ' MB</li>';
+    }
+    if (data.recording_count != null) extra += '<li><strong>Recordings:</strong> ' + sanitizeText(String(data.recording_count)) + '</li>';
+    if (data.retention_days != null) extra += '<li><strong>Retention:</strong> ' + sanitizeText(String(data.retention_days)) + ' days</li>';
+    el.innerHTML =
+      '<ul class="sensor-list">' +
+      '<li><strong>Overall:</strong> <span class="' + statusClass + '">' + (data.status === 'ok' ? 'OK' : 'Degraded') + '</span></li>' +
+      '<li><strong>Database:</strong> <span class="' + (data.db_ok ? 'status-ok' : 'status-error') + '">' + (data.db_ok ? 'Connected' : 'Error') + '</span></li>' +
+      '<li><strong>Uptime:</strong> ' + sanitizeText(formatUptime(data.uptime_seconds)) + '</li>' +
+      '<li><strong>Recording:</strong> ' + (data.recording ? '● Live' : '○ Stopped') + '</li>' +
+      (camList ? '<li><strong>Cameras:</strong><ul>' + camList + '</ul></li>' : '') +
+      extra +
+      '</ul>';
+  }
+
+  function loadDashboard() {
+    var today = new Date().toISOString().slice(0, 10);
+    var todayFrom = today + 'T00:00:00Z';
+    Promise.all([
+      fetch('/api/v1/system_status', API).then(function(r) { return r.json(); }),
+      fetch('/events?limit=500&date_from=' + encodeURIComponent(todayFrom), API).then(function(r) { return r.json(); }).catch(function() { return { events: [] }; }),
+      fetch('/events?limit=500&acknowledged=false', API).then(function(r) { return r.json(); }).catch(function() { return { events: [] }; }),
+      fetch('/streams', API).then(function(r) { return r.json(); }).catch(function() { return []; })
+    ]).then(function(results) {
+      var status = results[0];
+      var eventsToday = Array.isArray(results[1]) ? results[1] : (results[1].events || []);
+      var eventsUnack = Array.isArray(results[2]) ? results[2] : (results[2].events || []);
+      var streams = Array.isArray(results[3]) ? results[3] : (results[3].streams || []);
+      var recEl = document.getElementById('dashboardRecording');
+      var evTodayEl = document.getElementById('dashboardEventsToday');
+      var unackEl = document.getElementById('dashboardUnack');
+      var streamsEl = document.getElementById('dashboardStreams');
+      if (recEl) recEl.textContent = status && status.recording ? '● Live' : '○ Stopped';
+      if (evTodayEl) evTodayEl.textContent = eventsToday.length;
+      if (unackEl) unackEl.textContent = eventsUnack.length;
+      if (streamsEl) streamsEl.textContent = streams.length;
+      if (status) {
+        renderStatus(status);
+        setRecordingUI(!!status.recording);
+        setNavMicIndicator(!!status.audio_enabled);
+      }
+    }).catch(function() {
+      var recEl = document.getElementById('dashboardRecording');
+      if (recEl) recEl.textContent = '—';
+      document.getElementById('dashboardEventsToday').textContent = '—';
+      document.getElementById('dashboardUnack').textContent = '—';
+      document.getElementById('dashboardStreams').textContent = '—';
+    });
+  }
+
+  loadDashboard();
+  fetch('/api/v1/system_status', API).then(function(r) { return r.json(); }).then(renderStatus).catch(function() {
+    if (document.getElementById('statusContent')) document.getElementById('statusContent').innerHTML = '<p class="empty-state">Failed to load status.</p>';
+  });
+
+  document.getElementById('btnRefreshStatus').addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true;
+    loadDashboard();
+    btn.disabled = false;
+  });
+
+  setInterval(loadDashboard, 15000);
+
+  document.getElementById('btnDetectCameras').addEventListener('click', function() {
+    const btn = this;
+    const out = document.getElementById('detectResult');
+    out.style.display = 'block';
+    out.textContent = 'Scanning…';
+    btn.disabled = true;
+    fetch('/api/v1/cameras/detect', API).then(function(r) { return r.json(); }).then(function(data) {
+      const list = data.detected || [];
+      const opened = list.filter(function(d) { return d.opened; });
+      out.textContent = 'Detected: ' + opened.length + ' usable. ' + (opened.length ? opened.map(function(d) { return d.name || d.path; }).join(', ') : '');
+      btn.disabled = false;
+    }).catch(function() {
+      out.textContent = 'Detection failed.';
+      btn.disabled = false;
+    });
+  });
+
+  // ---------- Recording toggle ----------
+  function setRecordingUI(recording) {
+    const status = document.getElementById('recordingStatus');
+    const btn = document.getElementById('btnToggleRecording');
+    if (status) status.textContent = recording ? '● Recording' : '○ Stopped';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = recording ? 'Stop Recording' : 'Start Recording';
+    }
+    var navRec = document.getElementById('navRecordingIndicator');
+    if (navRec) {
+      navRec.classList.remove('recording-on', 'recording-off');
+      navRec.classList.add(recording ? 'recording-on' : 'recording-off');
+      navRec.title = recording ? 'Recording (blinking = live)' : 'Recording stopped';
+    }
+    var fsRec = document.getElementById('fsRecordBtn');
+    if (fsRec) {
+      fsRec.textContent = recording ? '● Stop record' : '○ Start record';
+      fsRec.classList.toggle('fs-rec-on', !!recording);
+      fsRec.setAttribute('aria-label', recording ? 'Stop recording' : 'Start recording');
+    }
+  }
+  function setNavMicIndicator(audioEnabled) {
+    var el = document.getElementById('navMicIndicator');
+    if (el) {
+      el.classList.remove('mic-on', 'mic-off');
+      el.classList.add(audioEnabled ? 'mic-on' : 'mic-off');
+      el.title = audioEnabled ? 'Audio recording on' : 'Audio recording off';
+      el.setAttribute('aria-label', audioEnabled ? 'Audio recording on' : 'Audio recording off');
+    }
+    var fsAudio = document.getElementById('fsAudioBtn');
+    if (fsAudio) {
+      fsAudio.textContent = audioEnabled ? '🎤 Audio on' : '🎤 Audio off';
+      fsAudio.classList.toggle('fs-audio-on', !!audioEnabled);
+      fsAudio.setAttribute('aria-label', audioEnabled ? 'Audio on' : 'Audio off');
+    }
+  }
+
+  fetch('/recording', API).then(function(r) { return r.json(); }).then(function(d) { setRecordingUI(d.recording); }).catch(function() {
+    setRecordingUI(false);
+  });
+
+  function doToggleRecording() {
+    var btn = document.getElementById('btnToggleRecording');
+    var fsBtn = document.getElementById('fsRecordBtn');
+    if (btn) btn.disabled = true;
+    if (fsBtn) fsBtn.disabled = true;
+    fetch('/toggle_recording', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        setRecordingUI(d.recording);
+        if (typeof addExtendedLog === 'function') addExtendedLog(d.recording ? 'Recording started.' : 'Recording stopped.');
+      })
+      .catch(function() { setRecordingUI(false); })
+      .finally(function() {
+        if (btn) btn.disabled = false;
+        if (fsBtn) fsBtn.disabled = false;
+      });
+  }
+  document.getElementById('btnToggleRecording').addEventListener('click', doToggleRecording);
+  var fsRecordBtn = document.getElementById('fsRecordBtn');
+  if (fsRecordBtn) fsRecordBtn.addEventListener('click', doToggleRecording);
+
+  var fsAudioBtn = document.getElementById('fsAudioBtn');
+  if (fsAudioBtn) fsAudioBtn.addEventListener('click', function() {
+    fetch('/api/audio_toggle', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { setNavMicIndicator(!!d.audio_enabled); })
+      .catch(function() {});
+  });
+
+  function moveCamera(direction) {
+    fetch('/move_camera', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction: direction })
+    }).catch(function() {});
+  }
+  document.getElementById('btnPtzLeft').addEventListener('click', function() { moveCamera('left'); });
+  document.getElementById('btnPtzRight').addEventListener('click', function() { moveCamera('right'); });
+  document.getElementById('btnPtzStop').addEventListener('click', function() { moveCamera('stop'); });
+
+  var motionEnabled = true;
+  document.getElementById('btnToggleMotion').addEventListener('click', function() {
+    motionEnabled = !motionEnabled;
+    var btn = this;
+    btn.disabled = true;
+    fetch('/toggle_motion', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motion: motionEnabled })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.motion !== undefined) motionEnabled = d.motion;
+      btn.textContent = motionEnabled ? 'Motion on' : 'Motion off';
+      addExtendedLog(motionEnabled ? 'Motion detection on.' : 'Motion detection off.');
+    }).catch(function() {}).finally(function() { btn.disabled = false; });
+  });
+
+  // ---------- Events ----------
+  function severityClass(s) {
+    if (s === 'high') return 'badge-high';
+    if (s === 'medium') return 'badge-medium';
+    return 'badge-low';
+  }
+
+  function fetchAndRenderEvents() {
+    const eventType = document.getElementById('filterEventType').value;
+    const severity = document.getElementById('filterSeverity').value;
+    const ack = document.getElementById('filterAck').value;
+    let url = '/events?limit=100';
+    if (eventType) url += '&event_type=' + encodeURIComponent(eventType);
+    if (severity) url += '&severity=' + encodeURIComponent(severity);
+    if (ack) url += '&acknowledged=' + encodeURIComponent(ack);
+    fetch(url, API).then(function(r) { return r.json(); }).then(function(events) {
+      const list = document.getElementById('eventsList');
+      if (!list) return;
+      if (!Array.isArray(events) || events.length === 0) {
+        list.innerHTML = '<p class="empty-state">No events. Events appear when recording or triggers fire.</p>';
+        return;
+      }
+      list.innerHTML = events.map(function(e) {
+        const sev = (e.severity || 'medium').toLowerCase();
+        const acked = e.acknowledged_at ? '<span class="status-ok">Acknowledged</span>' : '';
+        const ackBtn = e.acknowledged_at ? '' : '<button type="button" class="btn btn-sm event-ack-btn" data-event-id="' + e.id + '" aria-label="Acknowledge event ' + e.id + '">Acknowledge</button>';
+        return '<div class="event-row" data-event-id="' + e.id + '">' +
+          '<span class="ts">' + sanitizeText(e.timestamp) + '</span>' +
+          '<span class="badge ' + severityClass(sev) + '" title="' + (sev === 'high' ? 'High: Requires immediate attention' : sev === 'medium' ? 'Medium: Review when possible' : 'Low: Informational') + '">' + sanitizeText(sev) + '</span>' +
+          '<span class="type">' + sanitizeText(e.event_type) + '</span>' +
+          (e.camera_id ? '<span>' + sanitizeText('Cam ' + e.camera_id) + '</span>' : '') +
+          acked +
+          ackBtn +
+          '</div>';
+      }).join('');
+      list.querySelectorAll('.event-ack-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = this.getAttribute('data-event-id');
+          if (!id) return;
+          this.disabled = true;
+          fetch('/events/' + id + '/acknowledge', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } })
+            .then(function(r) { return r.json(); })
+            .then(function() { fetchAndRenderEvents(); if (typeof loadDashboard === 'function') loadDashboard(); })
+            .catch(function() { btn.disabled = false; });
+        });
+      });
+    }).catch(function() {
+      const list = document.getElementById('eventsList');
+      if (list) list.innerHTML = '<p class="empty-state">Failed to load events.</p>';
+    });
+  }
+
+  function doSearchEvents() {
+    var q = (document.getElementById('eventsSearchInput').value || '').trim();
+    if (!q) return;
+    var resultsEl = document.getElementById('eventsSearchResults');
+    var listEl = document.getElementById('eventsList');
+    var clearBtn = document.getElementById('btnClearSearch');
+    resultsEl.style.display = 'block';
+    listEl.style.display = 'none';
+    clearBtn.style.display = 'inline-block';
+    resultsEl.innerHTML = '<p class="empty-state">Searching…</p>';
+    fetch('/api/v1/search', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: q })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      var events = data.events || [];
+      var aiData = data.ai_data || [];
+      var html = '';
+      if (events.length) {
+        html += '<p style="font-size:0.85rem;color:var(--muted);margin:0 0 0.25rem 0;">Events</p>';
+        html += events.map(function(e) {
+          var sev = (e.severity || 'medium').toLowerCase();
+          return '<div class="event-row">' +
+            '<span class="ts">' + sanitizeText(e.timestamp) + '</span>' +
+            '<span class="badge ' + severityClass(sev) + '">' + sanitizeText(sev) + '</span>' +
+            '<span class="type">' + sanitizeText(e.event_type) + '</span>' +
+            (e.camera_id ? '<span>Cam ' + sanitizeText(e.camera_id) + '</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      if (aiData.length) {
+        html += '<p style="font-size:0.85rem;color:var(--muted);margin:1rem 0 0.25rem 0;">AI data</p>';
+        html += aiData.slice(0, 20).map(function(a) {
+          return '<div class="event-row">' +
+            '<span class="ts">' + sanitizeText(a.date) + ' ' + sanitizeText(a.time || '') + '</span>' +
+            '<span class="type">' + sanitizeText(a.event || '') + '</span>' +
+            (a.object ? '<span>' + sanitizeText(a.object) + '</span>' : '') +
+            (a.scene ? '<span>' + sanitizeText(a.scene) + '</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      if (!html) html = '<p class="empty-state">No results for &quot;' + sanitizeText(q) + '&quot;</p>';
+      resultsEl.innerHTML = html;
+    }).catch(function() {
+      resultsEl.innerHTML = '<p class="empty-state">Search failed.</p>';
+    });
+  }
+
+  document.getElementById('btnSearchEvents').addEventListener('click', doSearchEvents);
+  document.getElementById('eventsSearchInput').addEventListener('keydown', function(ev) { if (ev.key === 'Enter') doSearchEvents(); });
+  document.getElementById('btnClearSearch').addEventListener('click', function() {
+    document.getElementById('eventsSearchResults').style.display = 'none';
+    document.getElementById('eventsList').style.display = '';
+    document.getElementById('btnClearSearch').style.display = 'none';
+    document.getElementById('eventsSearchInput').value = '';
+    document.getElementById('eventsSearchResults').innerHTML = '<p class="empty-state">Search results will appear here.</p>';
+  });
+
+  document.getElementById('filterEventType').addEventListener('change', fetchAndRenderEvents);
+  document.getElementById('filterSeverity').addEventListener('change', fetchAndRenderEvents);
+  document.getElementById('filterAck').addEventListener('change', fetchAndRenderEvents);
+  document.getElementById('btnRefreshEvents').addEventListener('click', fetchAndRenderEvents);
+  fetchAndRenderEvents();
+  setInterval(fetchAndRenderEvents, 20000);
+
+  // ---------- Behaviors section ----------
+  function loadBehaviorsSection() {
+    const today = new Date().toISOString().slice(0, 10);
+    const typeFilter = document.getElementById('behaviorsFilterType') ? document.getElementById('behaviorsFilterType').value : '';
+    Promise.all([
+      fetch('/events?limit=500&date_from=' + today, API).then(function(r) { return r.json(); }).catch(function() { return []; }),
+      fetch('/events?limit=500&acknowledged=false', API).then(function(r) { return r.json(); }).catch(function() { return []; }),
+      fetch('/api/v1/analytics/aggregates?date_from=' + today + '&date_to=' + today, API).then(function(r) { return r.json(); }).catch(function() { return { aggregates: [] }; })
+    ]).then(function(results) {
+      const eventsToday = Array.isArray(results[0]) ? results[0] : [];
+      const eventsUnack = Array.isArray(results[1]) ? results[1] : [];
+      const agg = results[2] && results[2].aggregates ? results[2].aggregates : [];
+      const byType = { motion: 0, loitering: 0, line_cross: 0 };
+      eventsToday.forEach(function(e) {
+        const t = (e.event_type || '').toLowerCase();
+        if (byType.hasOwnProperty(t)) byType[t]++;
+      });
+      const elMotion = document.getElementById('behaviorsCountMotion');
+      const elLoiter = document.getElementById('behaviorsCountLoitering');
+      const elLine = document.getElementById('behaviorsCountLineCross');
+      const elUnack = document.getElementById('behaviorsCountUnack');
+      if (elMotion) elMotion.textContent = byType.motion;
+      if (elLoiter) elLoiter.textContent = byType.loitering;
+      if (elLine) elLine.textContent = byType.line_cross;
+      if (elUnack) elUnack.textContent = eventsUnack.length;
+
+      var byHour = {};
+      for (var h = 0; h < 24; h++) byHour[h] = 0;
+      agg.forEach(function(a) {
+        var hour = parseInt(a.hour, 10);
+        if (!isNaN(hour) && hour >= 0 && hour < 24) byHour[hour] = (byHour[hour] || 0) + (a.count || 0);
+      });
+      var maxH = 1;
+      for (var k in byHour) if (byHour[k] > maxH) maxH = byHour[k];
+      var chartEl = document.getElementById('behaviorsActivityChart');
+      if (chartEl) {
+        chartEl.innerHTML = '';
+        for (var i = 0; i < 24; i++) {
+          var count = byHour[i] || 0;
+          var bar = document.createElement('div');
+          bar.style.flex = '1';
+          bar.style.minWidth = '0';
+          bar.style.borderRadius = '2px 2px 0 0';
+          bar.style.height = Math.round((count / maxH) * 100) + '%';
+          bar.style.minHeight = count > 0 ? '4px' : '0';
+          var intensity = maxH > 0 ? 0.4 + 0.6 * (count / maxH) : 0.4;
+          bar.style.background = 'rgba(20, 184, 166, ' + intensity + ')';
+          bar.title = i + ':00 — ' + count + ' events';
+          chartEl.appendChild(bar);
+        }
+      }
+    });
+
+    var feedUrl = '/events?limit=80&date_from=' + today;
+    if (typeFilter) feedUrl += '&event_type=' + encodeURIComponent(typeFilter);
+    fetch(feedUrl, API).then(function(r) { return r.json(); }).then(function(events) {
+      const list = document.getElementById('behaviorsFeedList');
+      if (!list) return;
+      const evs = Array.isArray(events) ? events : [];
+      if (evs.length === 0) {
+        list.innerHTML = '<p class="empty-state">No events in this range. Change filter or check Events.</p>';
+        return;
+      }
+      evs.sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+      list.innerHTML = evs.slice(0, 60).map(function(e) {
+        const sev = (e.severity || 'medium').toLowerCase();
+        const meta = (function() { try { return e.metadata ? JSON.parse(e.metadata) : {}; } catch(err) { return {}; } })();
+        const behaviorLabel = meta.event || e.event_type || 'event';
+        const obj = meta.object ? ' · ' + meta.object : '';
+        const ackBtn = e.acknowledged_at ? '<span class="status-ok" style="font-size:0.8rem;">Acknowledged</span>' :
+          '<button type="button" class="btn btn-sm" data-ack-id="' + e.id + '" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Ack</button>';
+        return '<div class="event-row" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">' +
+          '<span class="ts" style="width:10rem;">' + sanitizeText(e.timestamp) + '</span>' +
+          '<span class="badge ' + severityClass(sev) + '">' + sanitizeText(sev) + '</span>' +
+          '<span class="type">' + sanitizeText(behaviorLabel) + '</span>' +
+          (e.camera_id ? '<span>' + sanitizeText('Cam ' + e.camera_id) + '</span>' : '') +
+          (obj ? '<span style="color:var(--muted);">' + sanitizeText(obj) + '</span>' : '') +
+          '<span style="margin-left:auto;">' + ackBtn + '</span>' +
+          '</div>';
+      }).join('');
+      list.querySelectorAll('[data-ack-id]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = this.getAttribute('data-ack-id');
+          if (!id) return;
+          this.disabled = true;
+          fetch('/events/' + id + '/acknowledge', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: 'operator' }) })
+            .then(function() { loadBehaviorsSection(); fetchAndRenderEvents(); })
+            .finally(function() { btn.disabled = false; });
+        });
+      });
+    }).catch(function() {
+      const list = document.getElementById('behaviorsFeedList');
+      if (list) list.innerHTML = '<p class="empty-state">Failed to load behavior feed. Sign in if required.</p>';
+    });
+  }
+
+  var today = new Date().toISOString().slice(0, 10);
+  var btnRefreshBehaviors = document.getElementById('btnRefreshBehaviors');
+  if (btnRefreshBehaviors) btnRefreshBehaviors.addEventListener('click', loadBehaviorsSection);
+  var behaviorsFilterType = document.getElementById('behaviorsFilterType');
+  if (behaviorsFilterType) behaviorsFilterType.addEventListener('change', loadBehaviorsSection);
+  loadBehaviorsSection();
+  setInterval(loadBehaviorsSection, 30000);
+
+  // ---------- Activity tab switching ----------
+  document.querySelectorAll('.activity-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tab = this.getAttribute('data-tab');
+      document.querySelectorAll('.activity-tab').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      this.classList.add('active');
+      this.setAttribute('aria-selected', 'true');
+      document.getElementById('activityPanelEvents').style.display = tab === 'events' ? 'block' : 'none';
+      document.getElementById('activityPanelTimeline').style.display = tab === 'timeline' ? 'block' : 'none';
+      document.getElementById('activityPanelChart').style.display = tab === 'chart' ? 'block' : 'none';
+      if (tab === 'timeline') loadTimeline();
+      if (tab === 'chart') loadBehaviorsSection();
+    });
+  });
+
+  // ---------- Timeline ----------
+  var timelineRange = '24h';
+  function getTimelineDateFrom() {
+    var d = new Date();
+    if (timelineRange === '24h') {
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().slice(0, 10);
+    }
+    if (timelineRange === '7d') {
+      d.setDate(d.getDate() - 7);
+      return d.toISOString().slice(0, 10);
+    }
+    return null;
+  }
+  function loadTimeline() {
+    var list = document.getElementById('timelineList');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-state">Loading timeline…</p>';
+    var dateFrom = getTimelineDateFrom();
+    var url = '/events?limit=500';
+    if (dateFrom) url += '&date_from=' + encodeURIComponent(dateFrom);
+    fetch(url, API).then(function(r) { return r.json(); }).then(function(events) {
+      if (!list) return;
+      var evs = Array.isArray(events) ? events : [];
+      if (evs.length === 0) {
+        list.innerHTML = '<p class="empty-state">No events in this range.</p>';
+        return;
+      }
+      evs.sort(function(a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+      list.innerHTML = evs.map(function(e, idx) {
+        var sev = (e.severity || 'medium').toLowerCase();
+        var meta = e.metadata;
+        try { if (typeof meta === 'string') meta = meta ? JSON.parse(meta) : {}; } catch (err) { meta = {}; }
+        var obj = meta.object || meta.obj;
+        var emotion = meta.emotion;
+        var needsReview = !e.acknowledged_at;
+        var highPriority = sev === 'high';
+        var flags = [];
+        if (needsReview) flags.push('<span class="badge badge-medium">Needs review</span>');
+        if (highPriority) flags.push('<span class="badge badge-high">High priority</span>');
+        var utc = e.timestamp_utc ? (' <span class="muted" style="font-size:0.8rem;">UTC ' + sanitizeText(e.timestamp_utc) + '</span>') : '';
+        var summary = [obj, emotion].filter(Boolean).join(' · ') || '';
+        var rowId = 'timeline-row-' + (e.id || idx);
+        var detailId = 'timeline-detail-' + (e.id || idx);
+        var metaHtml = '';
+        if (meta && (meta.pose || meta.scene || meta.crowd_count != null || meta.crowd != null || meta.license_plate || meta.object || meta.emotion)) {
+          metaHtml = '<div class="timeline-meta" style="font-size:0.85rem;color:var(--muted);margin-top:0.35rem;">';
+          if (meta.object) metaHtml += 'Object: ' + sanitizeText(meta.object) + ' ';
+          if (meta.emotion) metaHtml += 'Emotion: ' + sanitizeText(meta.emotion) + ' ';
+          if (meta.pose) metaHtml += 'Pose: ' + sanitizeText(meta.pose) + ' ';
+          if (meta.scene) metaHtml += 'Scene: ' + sanitizeText(meta.scene) + ' ';
+          if (meta.crowd_count != null || meta.crowd != null) metaHtml += 'Crowd: ' + (meta.crowd_count != null ? meta.crowd_count : meta.crowd) + ' ';
+          if (meta.license_plate) metaHtml += 'Plate: ' + sanitizeText(meta.license_plate);
+          metaHtml += '</div>';
+        }
+        var jsonBlob = '<pre class="timeline-json" style="font-size:0.75rem;overflow:auto;max-height:120px;background:var(--bg);padding:0.5rem;border-radius:var(--radius-sm);margin-top:0.35rem;">' + sanitizeText(JSON.stringify(e, null, 2)) + '</pre>';
+        return '<div class="event-row timeline-row" id="' + rowId + '" data-detail-id="' + detailId + '">' +
+          '<span class="ts">' + sanitizeText(e.timestamp) + '</span>' + utc +
+          '<span class="badge ' + severityClass(sev) + '">' + sanitizeText(e.event_type || 'event') + '</span>' +
+          '<span class="badge ' + severityClass(sev) + '">' + sanitizeText(sev) + '</span>' +
+          (e.camera_id ? '<span>Cam ' + sanitizeText(e.camera_id) + '</span>' : '') +
+          (summary ? '<span class="muted">' + sanitizeText(summary) + '</span>' : '') +
+          flags.join(' ') +
+          '<button type="button" class="btn btn-sm" style="margin-left:auto;" aria-expanded="false" aria-controls="' + detailId + '" data-timeline-toggle>Expand</button>' +
+          '</div>' +
+          '<div id="' + detailId + '" class="timeline-detail" style="display:none;padding:0.5rem 0 0.5rem 1rem;border-left:3px solid var(--border);margin-left:0.5rem;">' +
+          (e.timestamp_utc ? '<div style="font-size:0.85rem;">UTC: ' + sanitizeText(e.timestamp_utc) + '</div>' : '') +
+          metaHtml + jsonBlob +
+          '</div>';
+      }).join('');
+      list.querySelectorAll('[data-timeline-toggle]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var detailId = this.getAttribute('aria-controls');
+          var detail = document.getElementById(detailId);
+          if (!detail) return;
+          var open = detail.style.display !== 'none';
+          detail.style.display = open ? 'none' : 'block';
+          this.setAttribute('aria-expanded', open ? 'false' : 'true');
+          this.textContent = open ? 'Expand' : 'Collapse';
+        });
+      });
+    }).catch(function() {
+      if (list) list.innerHTML = '<p class="empty-state">Failed to load timeline.</p>';
+    });
+  }
+  document.querySelectorAll('.timeline-range-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      timelineRange = this.getAttribute('data-range');
+      document.querySelectorAll('.timeline-range-btn').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+      this.classList.add('active');
+      this.setAttribute('aria-pressed', 'true');
+      loadTimeline();
+    });
+  });
+  var btnRefreshTimeline = document.getElementById('btnRefreshTimeline');
+  if (btnRefreshTimeline) btnRefreshTimeline.addEventListener('click', loadTimeline);
+  loadTimeline();
+
+  // ---------- Activity log ----------
+  var logRange = '24h';
+  function getLogDateFrom() {
+    var d = new Date();
+    if (logRange === '24h') { d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
+    if (logRange === '7d') { d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); }
+    return null;
+  }
+  function getLogDateTo() { return new Date().toISOString().slice(0, 10); }
+  function loadLog() {
+    var list = document.getElementById('logList');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-state">Loading activity log…</p>';
+    var dateFrom = getLogDateFrom();
+    var dateTo = getLogDateTo();
+    var url = '/get_data?limit=500';
+    if (dateFrom) url += '&date_from=' + encodeURIComponent(dateFrom);
+    url += '&date_to=' + encodeURIComponent(dateTo);
+    fetch(url, API).then(function(r) { return r.json(); }).then(function(rows) {
+      if (!list) return;
+      var data = Array.isArray(rows) ? rows : [];
+      if (data.length === 0) {
+        list.innerHTML = '<p class="empty-state">No activity in this range.</p>';
+        return;
+      }
+      var logCols = ['Time','Event','Object','Pose','Emotion','Scene','Crowd','Stress','Threat','Anom.','Race','Audio','Audio sent.','Audio emotion','Audio stress','Audio threat',''];
+      list.innerHTML = '<div style="overflow-x:auto;"><table class="log-table" style="min-width:100%;font-size:0.75rem;border-collapse:collapse;"><thead><tr>' +
+        logCols.map(function(c){ return '<th>' + (c || '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
+        data.map(function(r, idx) {
+          var t = (r.date || '') + ' ' + (r.time || '');
+          var audioT = (r.audio_transcription || r.audio_event || '').slice(0, 40);
+          var rowId = 'log-row-' + idx;
+          var detailId = 'log-detail-' + idx;
+          var extra = { pose: r.pose, scene: r.scene, crowd_count: r.crowd_count, micro_expression: r.micro_expression, gait_notes: r.gait_notes, clothing_description: r.clothing_description, anomaly_score: r.anomaly_score, attention_region: r.attention_region, perceived_ethnicity: r.perceived_ethnicity, perceived_gender: r.perceived_gender, perceived_age_range: r.perceived_age_range, audio_speaker_gender: r.audio_speaker_gender, audio_speaker_age_range: r.audio_speaker_age_range, audio_energy_db: r.audio_energy_db, audio_background_type: r.audio_background_type, audio_anomaly_score: r.audio_anomaly_score, audio_speech_rate: r.audio_speech_rate, audio_language: r.audio_language, audio_keywords: r.audio_keywords, camera_id: r.camera_id, timestamp_utc: r.timestamp_utc };
+          var detailHtml = Object.keys(extra).filter(function(k) { var v = extra[k]; return v != null && v !== ''; }).map(function(k) { return sanitizeText(k) + ': ' + sanitizeText(String(extra[k])); }).join(' · ');
+          var raceVal = (r.perceived_ethnicity || '').toString().trim();
+          return '<tr id="' + rowId + '"><td style="padding:0.35rem;color:var(--muted);">' + sanitizeText(t) + '</td><td style="padding:0.35rem;">' + sanitizeText(r.event || '') + '</td><td style="padding:0.35rem;">' + sanitizeText(r.object || '') + '</td><td style="padding:0.35rem;">' + sanitizeText((r.pose || '').slice(0,12)) + '</td><td style="padding:0.35rem;">' + sanitizeText(r.emotion || '') + '</td><td style="padding:0.35rem;">' + sanitizeText((r.scene || '').slice(0,12)) + '</td><td style="padding:0.35rem;">' + (r.crowd_count != null ? r.crowd_count : '') + '</td><td style="padding:0.35rem;">' + sanitizeText(r.stress_level || '') + '</td><td style="padding:0.35rem;">' + (r.threat_score != null ? r.threat_score : '') + '</td><td style="padding:0.35rem;">' + (r.anomaly_score != null ? r.anomaly_score : '') + '</td><td style="padding:0.35rem;" title="Perceived ethnicity (when ENABLE_SENSITIVE_ATTRIBUTES=1)">' + sanitizeText(raceVal) + '</td><td style="padding:0.35rem;" title="' + sanitizeText(r.audio_transcription || r.audio_event || '') + '">' + sanitizeText(audioT) + (audioT.length >= 40 ? '…' : '') + '</td><td style="padding:0.35rem;">' + sanitizeText(r.audio_sentiment || '') + '</td><td style="padding:0.35rem;">' + sanitizeText(r.audio_emotion || '') + '</td><td style="padding:0.35rem;">' + sanitizeText(r.audio_stress_level || '') + '</td><td style="padding:0.35rem;">' + (r.audio_threat_score != null ? r.audio_threat_score : '') + '</td><td style="padding:0.2rem;"><button type="button" class="btn btn-sm" style="font-size:0.7rem;" data-detail-id="' + detailId + '" aria-label="Toggle details">…</button></td></tr><tr id="' + detailId + '" style="display:none;"><td colspan="' + logCols.length + '" style="padding:0.35rem;font-size:0.7rem;color:var(--muted);background:var(--surface);">' + (detailHtml || '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+      list.querySelectorAll('[data-detail-id]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var detailId = this.getAttribute('data-detail-id');
+          var row = document.getElementById(detailId);
+          if (!row) return;
+          row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+        });
+      });
+    }).catch(function() {
+      if (list) list.innerHTML = '<p class="empty-state">Failed to load activity log.</p>';
+    });
+  }
+  document.querySelectorAll('.log-range-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      logRange = this.getAttribute('data-range');
+      document.querySelectorAll('.log-range-btn').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+      this.classList.add('active');
+      this.setAttribute('aria-pressed', 'true');
+      loadLog();
+    });
+  });
+  var btnRefreshLog = document.getElementById('btnRefreshLog');
+  if (btnRefreshLog) btnRefreshLog.addEventListener('click', loadLog);
+  loadLog();
+
+  // ---------- Map ----------
+  function loadMap() {
+    var siteSelect = document.getElementById('mapSiteSelect');
+    var mapImage = document.getElementById('mapImage');
+    var mapPlaceholder = document.getElementById('mapPlaceholder');
+    var mapMarkers = document.getElementById('mapMarkers');
+    var cameraList = document.getElementById('mapCameraList');
+    if (!siteSelect) return;
+    fetch('/sites', API).then(function(r) { return r.json(); }).then(function(sites) {
+      var list = Array.isArray(sites) ? sites : [];
+      siteSelect.innerHTML = '';
+      if (list.length === 0) {
+        siteSelect.innerHTML = '<option value="default">Default</option>';
+        list = [{ id: 'default', name: 'Default', map_url: null }];
+      }
+      list.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name || s.id;
+        siteSelect.appendChild(opt);
+      });
+      if (list.length) siteSelect.value = list[0].id;
+      var siteId = siteSelect.value || (list[0] && list[0].id) || 'default';
+      var current = list.find(function(s) { return s.id === siteId; }) || list[0];
+      if (current && current.map_url) {
+        mapImage.src = current.map_url;
+        mapImage.style.display = 'block';
+        mapPlaceholder.style.display = 'none';
+      } else {
+        mapImage.style.display = 'none';
+        mapPlaceholder.style.display = 'flex';
+      }
+      return fetch('/camera_positions?site_id=' + encodeURIComponent(siteId), API).then(function(r) { return r.json(); });
+    }).then(function(positions) {
+      if (!positions || !Array.isArray(positions)) positions = [];
+      mapMarkers.innerHTML = '';
+      positions.forEach(function(pos) {
+        var m = document.createElement('div');
+        m.style.position = 'absolute';
+        m.style.left = (pos.x != null ? pos.x * 100 : 0) + '%';
+        m.style.top = (pos.y != null ? pos.y * 100 : 0) + '%';
+        m.style.transform = 'translate(-50%, -50%)';
+        m.style.width = '24px';
+        m.style.height = '24px';
+        m.style.borderRadius = '50%';
+        m.style.background = 'var(--accent)';
+        m.style.border = '2px solid var(--text)';
+        m.style.display = 'flex';
+        m.style.alignItems = 'center';
+        m.style.justifyContent = 'center';
+        m.style.fontSize = '0.7rem';
+        m.style.fontWeight = 'bold';
+        m.style.color = '#000';
+        m.textContent = pos.camera_id || '?';
+        m.title = pos.label || pos.camera_id || '';
+        mapMarkers.appendChild(m);
+      });
+      if (cameraList) cameraList.textContent = 'Cameras: ' + (positions.map(function(p) { return p.label || p.camera_id; }).join(', ') || 'None');
+    }).catch(function() {
+      if (siteSelect) siteSelect.innerHTML = '<option value="default">Failed to load</option>';
+      if (cameraList) cameraList.textContent = 'Cameras: —';
+    });
+  }
+  var mapSiteSelect = document.getElementById('mapSiteSelect');
+  if (mapSiteSelect) mapSiteSelect.addEventListener('change', loadMap);
+  var btnRefreshMap = document.getElementById('btnRefreshMap');
+  if (btnRefreshMap) btnRefreshMap.addEventListener('click', loadMap);
+  loadMap();
+
+  // ---------- Analytics ----------
+  var analyticsAggregates = [];
+  (function setDefaultAnalyticsDates() {
+    var d = new Date();
+    var to = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - 7);
+    var from = d.toISOString().slice(0, 10);
+    var fromEl = document.getElementById('analyticsFrom');
+    var toEl = document.getElementById('analyticsTo');
+    if (fromEl) fromEl.value = from;
+    if (toEl) toEl.value = to;
+  })();
+  function loadAnalytics() {
+    var fromEl = document.getElementById('analyticsFrom');
+    var toEl = document.getElementById('analyticsTo');
+    var wrap = document.getElementById('analyticsTableWrap');
+    var summaryEl = document.getElementById('analyticsSummary');
+    if (!wrap) return;
+    var dateFrom = fromEl ? fromEl.value : '';
+    var dateTo = toEl ? toEl.value : '';
+    if (!dateFrom || !dateTo) {
+      wrap.innerHTML = '<p class="empty-state">Set From and To dates.</p>';
+      return;
+    }
+    wrap.innerHTML = '<p class="empty-state">Loading…</p>';
+    fetch('/api/v1/analytics/aggregates?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo), API).then(function(r) { return r.json(); }).then(function(data) {
+      var agg = data.aggregates || [];
+      analyticsAggregates = agg;
+      if (summaryEl) {
+        var total = agg.reduce(function(s, a) { return s + (a.count || 0); }, 0);
+        var events = {};
+        agg.forEach(function(a) { events[a.event] = (events[a.event] || 0) + (a.count || 0); });
+        var topEvent = '';
+        var topCount = 0;
+        for (var k in events) if (events[k] > topCount) { topCount = events[k]; topEvent = k; }
+        summaryEl.innerHTML = '<div class="card" style="padding:0.75rem;"><span class="muted">Total events</span><div style="font-size:1.25rem;font-weight:600;">' + total + '</div></div>' +
+          '<div class="card" style="padding:0.75rem;"><span class="muted">Distinct event types</span><div style="font-size:1.25rem;font-weight:600;">' + Object.keys(events).length + '</div></div>' +
+          '<div class="card" style="padding:0.75rem;"><span class="muted">Top event</span><div style="font-size:1.25rem;font-weight:600;">' + sanitizeText(topEvent || '—') + ' (' + topCount + ')</div></div>';
+      }
+      if (agg.length === 0) {
+        wrap.innerHTML = '<p class="empty-state">No aggregates in this range.</p>';
+        return;
+      }
+      wrap.innerHTML = '<table style="width:100%;font-size:0.85rem;border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:0.35rem;">Date</th><th style="text-align:left;padding:0.35rem;">Hour</th><th style="text-align:left;padding:0.35rem;">Event</th><th style="text-align:left;padding:0.35rem;">Camera</th><th style="text-align:left;padding:0.35rem;">Count</th><th style="text-align:left;padding:0.35rem;">Crowd</th></tr></thead><tbody>' +
+        agg.map(function(a) {
+          return '<tr><td style="padding:0.35rem;">' + sanitizeText(a.date || '') + '</td><td style="padding:0.35rem;">' + sanitizeText(a.hour != null ? a.hour : '') + '</td><td style="padding:0.35rem;">' + sanitizeText(a.event || '') + '</td><td style="padding:0.35rem;">' + sanitizeText(a.camera_id || '') + '</td><td style="padding:0.35rem;">' + (a.count != null ? a.count : '') + '</td><td style="padding:0.35rem;">' + (a.total_crowd != null ? a.total_crowd : '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }).catch(function() {
+      if (wrap) wrap.innerHTML = '<p class="empty-state">Failed to load analytics.</p>';
+    });
+  }
+  document.getElementById('btnLoadAnalytics').addEventListener('click', loadAnalytics);
+  document.getElementById('btnExportAggregatesCsv').addEventListener('click', function() {
+    if (analyticsAggregates.length === 0) { alert('Load analytics first.'); return; }
+    var headers = ['date', 'hour', 'event', 'camera_id', 'count', 'total_crowd'];
+    var csv = headers.join(',') + '\n' + analyticsAggregates.map(function(a) {
+      return [a.date, a.hour, a.event, a.camera_id, a.count, a.total_crowd].map(function(v) { return '"' + String(v != null ? v : '').replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\n');
+    var a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'aggregates_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+  });
+
+  // ---------- Export (verify + recordings list) ----------
+  document.getElementById('btnVerifyAiData').addEventListener('click', function() {
+    var el = document.getElementById('verifyAiResult');
+    el.style.display = 'block';
+    el.textContent = 'Verifying…';
+    fetch('/api/v1/ai_data/verify', API).then(function(r) { return r.json(); }).then(function(data) {
+      el.textContent = 'Verified: ' + (data.verified || 0) + ', Mismatched: ' + (data.mismatched || 0) + ', Total: ' + (data.total || 0);
+      el.classList.remove('status-error');
+      if (data.mismatched > 0) el.classList.add('status-error');
+    }).catch(function() {
+      el.textContent = 'Verify failed.';
+      el.classList.add('status-error');
+    });
+  });
+  document.getElementById('btnVerifyAudit').addEventListener('click', function() {
+    var el = document.getElementById('verifyAuditResult');
+    el.style.display = 'block';
+    el.textContent = 'Verifying…';
+    fetch('/audit_log/verify', API).then(function(r) { return r.json(); }).then(function(data) {
+      el.textContent = 'Audit: ' + (data.verified || 0) + ' verified, ' + (data.mismatched || 0) + ' mismatched, ' + (data.total || 0) + ' total';
+      el.classList.remove('status-error');
+      if (data.mismatched > 0) el.classList.add('status-error');
+    }).catch(function() {
+      el.textContent = 'Verify failed.';
+      el.classList.add('status-error');
+    });
+  });
+  var exportRecordingsCache = [];
+  var toolbarEl = document.getElementById('exportRecordingsToolbar');
+  var searchEl = document.getElementById('exportRecordingsSearch');
+  var sortEl = document.getElementById('exportRecordingsSort');
+  var countEl = document.getElementById('exportRecordingsCount');
+
+  function fmtSize(n) {
+    if (n == null || isNaN(n)) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function renderExportRecordings() {
+    var list = document.getElementById('exportRecordingsList');
+    if (!list) return;
+    var query = (searchEl && searchEl.value) ? String(searchEl.value).trim().toLowerCase() : '';
+    var sortVal = (sortEl && sortEl.value) ? sortEl.value : 'date-desc';
+    var recs = exportRecordingsCache.slice();
+    if (query) recs = recs.filter(function(r) { return (r.name || '').toLowerCase().indexOf(query) >= 0; });
+    if (sortVal === 'date-asc') recs.sort(function(a, b) { return (a.created_utc || '').localeCompare(b.created_utc || ''); });
+    else if (sortVal === 'date-desc') recs.sort(function(a, b) { return (b.created_utc || '').localeCompare(a.created_utc || ''); });
+    else if (sortVal === 'name-asc') recs.sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+    else if (sortVal === 'name-desc') recs.sort(function(a, b) { return (b.name || '').localeCompare(a.name || ''); });
+    else if (sortVal === 'size-desc') recs.sort(function(a, b) { return (b.size_bytes || 0) - (a.size_bytes || 0); });
+    else if (sortVal === 'size-asc') recs.sort(function(a, b) { return (a.size_bytes || 0) - (b.size_bytes || 0); });
+    if (toolbarEl) toolbarEl.style.display = 'flex';
+    if (countEl) countEl.textContent = recs.length + (exportRecordingsCache.length !== recs.length ? ' of ' + exportRecordingsCache.length : '') + ' recording(s)';
+    if (recs.length === 0) {
+      list.innerHTML = query ? '<p class="empty-state">No recordings match "' + sanitizeText(query) + '".</p>' : '<p class="empty-state">No recordings. Start recording from Live.</p>';
+      return;
+    }
+    list.innerHTML = recs.map(function(r) {
+      var name = r.name || r;
+      var safe = encodeURIComponent(name);
+      var manifestId = 'manifest-' + safe.replace(/[^a-z0-9]/gi, '_');
+      var dateStr = r.created_utc ? (r.created_utc.slice(0, 10) + ' ' + r.created_utc.slice(11, 19)) : '—';
+      var sizeStr = fmtSize(r.size_bytes);
+      return '<div class="event-row" style="margin-bottom:0.5rem;">' +
+        '<span style="font-weight:500;font-family:monospace;">' + sanitizeText(name) + '</span> ' +
+        '<span class="ts">' + sanitizeText(dateStr) + '</span> ' +
+        '<span class="muted" style="font-size:0.8rem;">' + sanitizeText(sizeStr) + '</span> ' +
+        '<a href="/recordings/' + safe + '/export" download class="btn btn-sm">AVI</a> ' +
+        '<a href="/recordings/' + safe + '/export?format=mp4" download class="btn btn-sm">MP4</a> ' +
+        '<button type="button" class="btn btn-sm" data-manifest-id="' + manifestId + '" data-recording-name="' + safe + '">View manifest</button>' +
+        '<pre id="' + manifestId + '" style="display:none;font-size:0.8rem;background:var(--bg);padding:0.5rem;margin-top:0.25rem;overflow:auto;max-height:120px;"></pre>' +
+        '</div>';
+    }).join('');
+    list.querySelectorAll('[data-manifest-id]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var preId = this.getAttribute('data-manifest-id');
+        var name = this.getAttribute('data-recording-name');
+        var pre = document.getElementById(preId);
+        if (!pre) return;
+        if (pre.style.display === 'none') {
+          pre.textContent = 'Loading…';
+          pre.style.display = 'block';
+          fetch('/recordings/' + name + '/manifest', API).then(function(r) { return r.json(); }).then(function(m) {
+            pre.textContent = JSON.stringify(m, null, 2);
+          }).catch(function() { pre.textContent = 'Failed to load manifest.'; });
+        } else {
+          pre.style.display = 'none';
+        }
+      });
+    });
+  }
+
+  if (searchEl) searchEl.addEventListener('input', renderExportRecordings);
+  if (searchEl) searchEl.addEventListener('search', renderExportRecordings);
+  if (sortEl) sortEl.addEventListener('change', renderExportRecordings);
+
+  fetch('/recordings', API).then(function(r) {
+    if (!r.ok) throw new Error('Forbidden');
+    return r.json();
+  }).then(function(data) {
+    var list = document.getElementById('exportRecordingsList');
+    if (!list) return;
+    exportRecordingsCache = (data && data.recordings) ? data.recordings : [];
+    if (exportRecordingsCache.length === 0) {
+      list.innerHTML = '<p class="empty-state">No recordings. Start recording from Live.</p>';
+      return;
+    }
+    renderExportRecordings();
+  }).catch(function() {
+    var list = document.getElementById('exportRecordingsList');
+    if (list) list.innerHTML = '<p class="empty-state">Sign in to view recordings.</p>';
+  });
+
+  // ---------- Storage location ----------
+  (function() {
+    var pathEl = document.getElementById('storageCurrentPath');
+    var usedEl = document.getElementById('storageUsedBytes');
+    var countEl = document.getElementById('storageRecordingCount');
+    var writeBadge = document.getElementById('storageWriteBadge');
+    var selectEl = document.getElementById('storageDriveSelect');
+    var applyBtn = document.getElementById('btnStorageApply');
+    var notifEl = document.getElementById('storageNotification');
+    if (!pathEl || !selectEl) return;
+    function fmtBytes(n) {
+      if (n == null || isNaN(n)) return '—';
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+    function showNotif(msg, isError) {
+      if (!notifEl) return;
+      notifEl.textContent = msg;
+      notifEl.style.display = 'block';
+      notifEl.style.background = isError ? 'var(--error-bg, rgba(200,80,80,0.15))' : 'var(--surface)';
+      notifEl.style.borderColor = isError ? 'var(--error, #c44)' : 'var(--border)';
+      setTimeout(function() { notifEl.style.display = 'none'; }, 5000);
+    }
+    function renderStorage(data) {
+      if (!data) return;
+      var recPath = data.recordings_path || data.path || '';
+      pathEl.textContent = recPath || 'Default (app directory)';
+      if (writeBadge) {
+        writeBadge.style.display = data.can_write === false ? 'inline' : 'none';
+      }
+      var used = data.used_bytes != null ? data.used_bytes : data.storage_used_bytes;
+      if (usedEl) usedEl.textContent = fmtBytes(used);
+      if (countEl) countEl.textContent = (data.recording_count != null) ? data.recording_count : '—';
+      if (!selectEl) return;
+      var drives = data.available_drives || [];
+      var current = recPath.replace(/\/+$/, '');
+      selectEl.innerHTML = '<option value="">Default (app directory)</option>' +
+        drives.map(function(d) {
+          var p = d.path || d;
+          var label = (d.label || p) + (d.removable ? ' (external)' : '');
+          var sel = p === current ? ' selected' : '';
+          return '<option value="' + sanitizeText(p) + '"' + sel + '>' + sanitizeText(label) + '</option>';
+        }).join('');
+      var optDefault = selectEl.querySelector('option[value=""]');
+      if (optDefault && !current) optDefault.selected = true;
+    }
+    function loadStorage() {
+      fetch('/api/storage', API).then(function(r) { return r.json(); }).then(renderStorage).catch(function() {
+        pathEl.textContent = '—';
+        selectEl.innerHTML = '<option value="">Failed to load</option>';
+      });
+    }
+    loadStorage();
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function() {
+        var path = (selectEl.value || '').trim();
+        fetch('/api/storage', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: path || null }) })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error || (data.success === false && data.message)) {
+              showNotif(data.error || data.message || 'Update failed', true);
+              return;
+            }
+            renderStorage(data);
+            showNotif(data.message || 'Storage location updated. New recordings will save here.');
+          })
+          .catch(function() { showNotif('Failed to update storage.', true); });
+      });
+    }
+    setInterval(loadStorage, 30000);
+  })();
+
+  // ---------- AI log ----------
+  function updateAILog(entries) {
+    const el = document.getElementById('aiLogContainer');
+    if (!el) return;
+    el.innerHTML = '';
+    (entries || []).slice(0, 50).forEach(function(entry) {
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      const t = entry.time || entry.date || '';
+      const msg = entry.event !== 'None' ? entry.event : (entry.object || 'Detection');
+      div.textContent = '[' + t + '] ' + msg + (entry.object ? ' - ' + entry.object : '');
+      el.appendChild(div);
+    });
+    if (el.children.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'empty-state';
+      p.textContent = 'No AI events yet. Start recording to capture analytics.';
+      el.appendChild(p);
+    }
+  }
+
+  fetch('/get_data', API).then(function(r) { return r.json(); }).then(updateAILog).catch(function() { updateAILog([]); });
+  setInterval(function() {
+    fetch('/get_data', API).then(function(r) { return r.json(); }).then(updateAILog).catch(function() {});
+  }, 10000);
+
+  window.exportAILogs = function() {
+    fetch('/get_data', API).then(function(r) { return r.json(); }).then(function(data) {
+      const text = (Array.isArray(data) ? data : []).map(function(e) {
+        return '[' + (e.time || '') + '] ' + (e.event || '') + ' ' + (e.object || '') + ' ' + (e.emotion || '');
+      }).join('\n');
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ai_detection_log.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      addExtendedLog('AI logs exported.');
+    }).catch(function() { alert('Failed to fetch AI data.'); });
+  };
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+</html>

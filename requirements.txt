@@ -1,0 +1,38 @@
+# Core - required
+flask>=3.0.0,<4
+flask-sock>=0.7.0
+python-dotenv>=1.0.0
+bcrypt>=4.0.0
+opencv-python>=4.8.0,<5
+numpy>=1.24.0,<2
+Pillow>=10.0.0
+pandas>=2.0.0
+
+# AI
+ultralytics>=8.0.0
+# deepface>=0.0.79  # Optional: emotion (TensorFlow); use when EMOTION_BACKEND=deepface
+# emotiefflib>=1.0.0  # Optional: TensorFlow-free emotion (PyTorch/ONNX); see docs/EMOTION_INTEGRATION.md
+pytesseract>=0.3.10
+mediapipe>=0.10.0
+
+# Optional: Raspberry Pi / Jetson (install on device only)
+# RPi.GPIO>=0.7.1
+
+# Optional: Audio (install if ENABLE_AUDIO=1)
+# pyaudio>=0.2.14
+# SpeechRecognition>=3.10.0
+
+# Optional: Wi-Fi monitor mode (install if ENABLE_WIFI_SNIFF=1)
+# scapy>=2.5.0
+
+# Optional: FLIR Lepton thermal (install on Jetson with Lepton hardware)
+# flirpy>=0.2.0
+
+# Optional: ONVIF PTZ (set ONVIF_HOST, ONVIF_USER, ONVIF_PASS)
+# onvif-zeep>=0.2.12
+
+# Optional: Redis for multi-instance WebSocket broadcast (set REDIS_URL)
+# redis>=5.0.0
+
+# Optional: TOTP MFA (NIST IR 8523 / CJIS); set ENABLE_MFA=1
+# pyotp>=2.9.0
