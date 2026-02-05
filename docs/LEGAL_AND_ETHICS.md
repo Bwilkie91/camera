@@ -27,6 +27,16 @@ This document is **not legal advice**. Laws vary by jurisdiction. Consult a lawy
 - **Storage**: Keep databases and logs on a secure, access-controlled system. Prefer encryption at rest where possible.
 - **No cloud by default**: This pipeline is designed to run locally. Do not send video, embeddings, or PII to the cloud without a clear legal basis and safeguards.
 
+## DPIA and lawful basis (GDPR Art 6 / 9)
+
+When using **biometric** (face, emotion) or **LPR** (license plate recognition), a **Data Protection Impact Assessment (DPIA)** and a **lawful basis** are typically required (e.g. GDPR Art 9, UK ICO surveillance guidance). The app exposes **GET /api/v1/what_we_collect** (and `dpia_recommended` when biometric or LPR is on) for transparency. Document your purpose, necessity, and retention; link to your DPIA or template in Settings or internal docs. See **docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md** and **docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md** §3.
+
+---
+
+## Video redaction (SAR, third-party sharing — GDPR Art 15/17, CCPA)
+
+Vigil does **not** include in-app face or plate redaction. For **subject access requests (SAR)**, **third-party sharing**, or **privacy-preserving distribution**, use an **external redaction tool** on exported video (e.g. blur/mask faces and license plates before sharing). Retain the unredacted primary recording per your retention and legal-hold policy; produce redacted **working copies** only when required. See **docs/RUNBOOKS.md** § Evidence and export (primary vs working image). Optional future: link to a redaction API or script in the export workflow. **References:** RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md §3 (Video redaction); BEST_PATH_FORWARD Phase 4.7.
+
 ---
 
 ## Best practices

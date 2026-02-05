@@ -4,7 +4,7 @@ This document rates the Vigil edge video security platform against **highest ind
 
 ---
 
-## Overall score: **80 / 100**
+## Overall score: **85 / 100**
 
 | Category | Weight | Score | Summary |
 |----------|--------|-------|---------|
@@ -13,10 +13,10 @@ This document rates the Vigil edge video security platform against **highest ind
 | **Data collection & quality** | 15% | 82 | Gated by recording; canonical row schema; primary-person consistency (centroid + attributes); height scaling; batch + flush on stop |
 | **Audit & accountability** | 15% | 88 | Audit log (login, export, config, recording); integrity verification endpoints; retention (RETENTION_DAYS, AUDIT_RETENTION_DAYS) |
 | **Privacy & ethics** | 10% | 78 | Civilian mode, optional sensitive attributes, docs (CIVILIAN_ETHICS_AUDIT, LEGAL_AND_ETHICS); ReID/watchlist opt-in |
-| **Security & operations** | 10% | 65 | Secure defaults partial; CSP/HSTS/HTTPS configurable; no encryption at rest; TLS not enforced in-app |
+| **Security & operations** | 10% | 72 | ENFORCE_HTTPS=1 (redirect) or =reject (403); CSP/HSTS configurable; fixity option; no encryption at rest |
 | **Documentation & provenance** | 5% | 95 | 40+ docs (standards, audit, collection, accuracy, config); .env.example and CONFIG_AND_OPTIMIZATION; AI model_version in every row |
 
-**Weighted:** (90×0.25 + 88×0.20 + 82×0.15 + 88×0.15 + 78×0.10 + 65×0.10 + 95×0.05) ≈ **83.5** → **80/100** to reflect remaining gaps (encryption at rest, enforced TLS, formal legal-hold workflow).
+**Weighted:** (90×0.25 + 88×0.20 + 82×0.15 + 88×0.15 + 78×0.10 + 72×0.10 + 95×0.05) ≈ **85** → **85/100** (remaining gap: encryption at rest; TLS and legal hold implemented via ENFORCE_HTTPS and /api/v1/legal_hold).
 
 ---
 
@@ -34,21 +34,31 @@ This document rates the Vigil edge video security platform against **highest ind
 
 - **Consistent ai_data row shape**: Every row has all canonical columns; batch insert uses fixed column list; export and analytics have stable schema.
 - **Primary person consistency**: Centroid and extended attributes (height, build, hair, clothing) use the same person (largest bbox by area).
-- **Estimated height**: Reference scales with frame height (`frame_h * 0.45`) for resolution-independent estimate; clamp 120–220 cm.
-- **MediaPipe**: Tasks API support for 0.10.30+; auto-download pose model; gait_notes and fall detection unchanged.
-- **Documentation**: DATA_COLLECTION_RESEARCH.md, STANDARDS_RATING.md; .env optimized for standards.
+- **Estimated height**: Reference scales with frame height; optional HEIGHT_REF_CM / HEIGHT_REF_PX per camera; clamp 120–220 cm.
+- **MediaPipe**: Person crop first; Standing/Sitting/Walking from landmarks; gait_notes and fall detection.
+- **Emotion**: CLAHE on L channel when dark (EMOTION_CLAHE_THRESHOLD); min crop 48×48; 224×224 for DeepFace age/gender.
+- **Scene**: Lower-half mean + variance (SCENE_VAR_MAX_INDOOR); Indoor only when mean &lt; 100 and var &lt; threshold.
+- **Motion**: Optional MOG2 backend + MOTION_THRESHOLD + MOTION_MOG2_VAR_THRESHOLD; morphology.
+- **Loiter/line**: Centroid smoothing (CENTROID_SMOOTHING_FRAMES); line-cross debounce; threat_score +10 for line_cross.
+- **Legal hold**: GET/POST/DELETE /api/v1/legal_hold; retention excludes held items; RUNBOOKS.
+- **HTTPS**: ENFORCE_HTTPS=1 (redirect) or =reject (403); RUNBOOKS § Evidence and export.
+- **OSAC image_type**: Recording manifest = primary; incident_bundle = working; RUNBOOKS.
+- **DPIA / redaction**: LEGAL_AND_ETHICS § DPIA and § Video redaction; what_we_collect face_attributes_note (FRVT).
+- **Documentation**: STANDARDS_APPLIED.md, PLAN_90_PLUS_DATA_POINTS.md, DATA_POINT_ACCURACY_RATING.md; .env highest-standards block.
 
 ---
 
 ## How to raise the score toward 100
 
-| Gap | Impact | Action |
-|-----|--------|--------|
-| **Encryption at rest** | High | Optional app-level encryption for DB and/or recordings; key management (see KEY_MANAGEMENT.md). |
-| **TLS enforcement** | Medium | ENFORCE_HTTPS=1 + reverse-proxy docs; reject non-HTTPS in production. |
-| **Legal hold workflow** | Medium | Formal “hold” flag or workflow for evidence preservation (API + UI). |
+**Prioritized path:** See **[BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](BEST_PATH_FORWARD_HIGHEST_STANDARDS.md)** for a phased roadmap (config → data quality → security & evidence → optional). **Current status:** Many Phase 1–3 items are done — see **[STANDARDS_APPLIED.md](STANDARDS_APPLIED.md)** and **[PLAN_90_PLUS_DATA_POINTS.md](PLAN_90_PLUS_DATA_POINTS.md)**.
+
+| Gap | Impact | Action / status |
+|-----|--------|-----------------|
+| **Encryption at rest** | High | Documented (LUKS/vault in KEY_MANAGEMENT, RUNBOOKS). Optional app-level encryption still pending. |
+| **TLS enforcement** | Medium | **Done:** ENFORCE_HTTPS=1 (redirect) or =reject (403); RUNBOOKS § Evidence and export. |
+| **Legal hold workflow** | Medium | **Done:** GET/POST/DELETE /api/v1/legal_hold; retention excludes held; RUNBOOKS § Legal hold. |
 | **Input validation** | Low | Centralize request validation (limit/offset, query params) for v1 APIs. |
-| **CVE/dependency process** | Low | `pip audit` in README/CI; scheduled dependency updates. |
+| **CVE/dependency process** | Low | **Done:** README § Operations and scripts/audit-deps.sh; pip audit recommended. |
 
 ---
 
@@ -61,3 +71,6 @@ This document rates the Vigil edge video security platform against **highest ind
 - **DATA_COLLECTION_RESEARCH.md** — Collection pipeline and improvements.
 - **CONFIG_AND_OPTIMIZATION.md** — Env presets for speed, accuracy, production.
 - **GOVERNMENT_STANDARDS_AUDIT.md** — Full gap analysis.
+- **BEST_PATH_FORWARD_HIGHEST_STANDARDS.md** — Prioritized roadmap to 90+ (config, data quality, security, evidence).
+- **STANDARDS_APPLIED.md** — What is integrated and how to keep it applied.
+- **PLAN_90_PLUS_DATA_POINTS.md** — Per–data-point plan to 90+ with enterprise/LE/journal refs.

@@ -2,7 +2,7 @@
 
 **Enterprise-grade AI-powered surveillance** with real-time analytics, NISTIR 8161–style chain of custody, and a React dashboard. Built for edge (Jetson, Raspberry Pi) and self-hosted deployment.
 
-**Standards rating: [80/100](docs/STANDARDS_RATING.md)** — aligned with NISTIR 8161, SWGDE, CJIS, and NIST AI 100-4 for evidence and operations.
+**Standards rating: [85/100](docs/STANDARDS_RATING.md)** — aligned with NISTIR 8161, SWGDE, CJIS, and NIST AI 100-4 for evidence and operations.
 
 ---
 
@@ -18,6 +18,7 @@
 - [Dashboard & UI](#dashboard--ui)
 - [Security & Compliance](#security--compliance)
 - [Deployment](#deployment)
+- [Suggested equipment (low / medium / high end)](#suggested-equipment-low--medium--high-end)
 - [Project Structure](#project-structure)
 - [Operations](#operations)
 - [Troubleshooting](#troubleshooting)
@@ -109,9 +110,11 @@ If you use Twilio, run your own Node server and set `ALERT_SMS_URL` and `ALERT_P
 | **Recording** | UI *Recording* or `POST /recording_config` | Event types (motion, loitering, line_cross, fall), capture_audio/thermal/wifi, ai_detail (minimal/full). |
 | **Retention** | `RETENTION_DAYS`, `AUDIT_RETENTION_DAYS` | Prune ai_data, events, recordings; audit log has separate retention (0 = never). |
 | **Alerts** | `ALERT_WEBHOOK_URL`, `ALERT_SMS_URL`, `ALERT_MQTT_BROKER`, `ALERT_MQTT_TOPIC` | Webhook POST, SMS relay, or MQTT. |
-| **Security** | `STRICT_TRANSPORT_SECURITY`, `ENFORCE_HTTPS`, `CONTENT_SECURITY_POLICY` | HSTS, redirect to HTTPS, CSP. Use behind reverse proxy. |
+| **Security** | `STRICT_TRANSPORT_SECURITY`, `ENFORCE_HTTPS`, `CONTENT_SECURITY_POLICY` | HSTS; `ENFORCE_HTTPS=1` redirect to HTTPS, `=reject` returns 403. Use behind reverse proxy. |
 | **MFA** | `ENABLE_MFA=1`, `MFA_ISSUER_NAME` | TOTP (install pyotp); NIST IR 8523 / CJIS. |
 | **Scaling** | `REDIS_URL` | Multi-instance WebSocket broadcast. |
+
+**Data quality (90+):** `EMOTION_CLAHE_THRESHOLD`, `SCENE_VAR_MAX_INDOOR`, `CENTROID_SMOOTHING_FRAMES`, `MOTION_MOG2_VAR_THRESHOLD` — see [docs/CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md) §10 and [docs/PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md).
 
 Full matrix and presets: [docs/CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md).
 
@@ -247,7 +250,7 @@ Full matrix and presets: [docs/CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIM
 - **Audit**: Login, export, config change, recording; audit log export with SHA-256; separate audit retention.
 - **HTTPS**: Run behind a reverse proxy; set `ENFORCE_HTTPS=1`, `STRICT_TRANSPORT_SECURITY=1` in production.
 - **Encryption at rest**: Use an encrypted volume (e.g. LUKS) for DB and recordings, or document key management for app-level encryption. [docs/SYSTEM_RATING.md](docs/SYSTEM_RATING.md).
-- **Standards rating**: [80/100](docs/STANDARDS_RATING.md) — NISTIR 8161, SWGDE, CJIS, NIST AI 100-4; gaps: encryption at rest, enforced TLS, formal legal-hold workflow.
+- **Standards rating**: [85/100](docs/STANDARDS_RATING.md) — NISTIR 8161, SWGDE, CJIS, NIST AI 100-4; TLS and legal hold implemented; remaining gap: encryption at rest.
 
 ---
 
@@ -278,6 +281,105 @@ Run `app.py` or gunicorn under systemd/supervisord; optionally Nginx. Set `JETSO
 
 ---
 
+## Suggested equipment (low / medium / high end)
+
+Research-backed hardware tiers for running Vigil with different budgets, camera counts, and evidence requirements. **Last audited: 2025–2026.** Pricing is approximate (USD); difficulty reflects setup, networking, and ongoing operations.
+
+### Overview
+
+| Tier | Compute | Cameras | Storage (30-day retention guide) | Est. total (hardware) | Setup difficulty |
+|------|--------|---------|-----------------------------------|------------------------|------------------|
+| **Low end** | Raspberry Pi 4/5 or refurb PC | 1–4 (1080p–4K) | 0.5–2 TB | $250–$700 | Easy |
+| **Medium** | Jetson Orin Nano Super / x86 + GPU | 4–12 (1080p–4K) | 2–8 TB | $900–$2,800 | Moderate |
+| **High end** | Server + NVIDIA GPU, NVR-grade | 12–64+ (4K/8K) | 16–80+ TB (RAID) | $4,500–$28,000+ | Advanced |
+
+**Storage note:** 24/7 recording ≈ 6–10 GB/day per 1080p camera, ≈ 20–24 GB/day per 4K (H.265 saves ~50% vs H.264; motion-only can cut usage 60–80%). Add 20–30% buffer. Use [Seagate’s surveillance calculator](https://www.seagate.com/solutions/surveillance/surveillance-storage-calculator/) or similar for exact sizing. See [CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md) for retention and recording settings.
+
+**Planning and environment considerations (often missed):**
+
+| Consideration | Guidance |
+|---------------|----------|
+| **PoE cable length** | Ethernet max 100 m (328 ft); plan runs **&lt; 90 m (295 ft)** to allow for bends and voltage drop. Use **Cat5e or Cat6** (pure copper preferred; avoid thin/Cu-Al cable). Long runs need a voltage-drop check so cameras get enough power (802.3af ≈ 15W, 802.3at ≈ 30W at device). |
+| **Network bandwidth** | Per stream: 1080p ~1–4 Mbps, 4K ~4–16 Mbps (H.265 ~half of H.264). Size switch uplink and LAN for total streams (e.g. 12× 4K ≈ 50–100 Mbps). Prefer wired over WiFi for reliability. |
+| **Cooling (edge)** | Raspberry Pi and Jetson throttle when hot (Pi 4 from ~80°C). For 24/7 AI workloads use a **heatsink** (passive) or **heatsink + fan**; avoid enclosed cabinets without airflow. |
+| **NDAA / TAA (US government)** | Federal and many state contracts require **NDAA-compliant** (and often **TAA-compliant**) cameras. Common consumer brands (e.g. Hikvision, Dahua, some Reolink) are **not** NDAA-compliant. Use vendors such as Axis, Hanwha, Bosch, Vivotek, or other [NDAA/TAA-listed](https://www.ecfr.gov/current/title-48/chapter-2/subchapter-A/part-204/subpart-204.21) options for government or regulated sites. |
+| **Placement and privacy** | Do not record bathrooms, bedrooms, or off-property (e.g. into a neighbor's yard). **Audio** is heavily regulated (wiretapping; one- or two-party consent by state). Use privacy zones and notice where required. See [LEGAL_AND_ETHICS.md](docs/LEGAL_AND_ETHICS.md). |
+| **Firmware and hardening** | IP cameras and NVRs often have CVEs; **keep firmware updated** and **isolate camera VLAN** from general LAN. Change default passwords; restrict admin access. |
+
+---
+
+### Low-end build
+
+**Goal:** Proof of concept, home, or small site (1–4 cameras) with basic AI (YOLO nano / YOLO11n, motion, optional LPR). Minimal cost and power.
+
+| Component | Suggested | Approx. price (2025–2026) | Notes |
+|-----------|------------|---------------------------|--------|
+| **Compute** | Raspberry Pi 4 (4GB) or Pi 5 (4–8GB) | $55–$95 | Pi 4: ~5–7 FPS YOLO nano; Pi 5: 2–3× CPU, runs YOLO11; use `YOLO_DEVICE=cpu`, `YOLO_IMGSZ=640`, `yolov8n.pt` or `yolo11n.pt`. Pi 5 16GB has seen large price increases (~$205); 4–8GB usually better value. For 24/7 AI: add heatsink or fan (see cooling above). |
+| **Alternative** | Refurbished SFF PC (e.g. Dell OptiPlex, 8GB RAM) | $100–$200 | More headroom than Pi; add low-profile GPU later if needed. |
+| **Cameras** | 1–4× 1080p–4K RTSP/ONVIF (Reolink RLC-510A, RLC-810A 4K ~$89; Amcrest IP2M-841, IP8M-2779EW 4K ~$120) | $30–$130 each | Reolink: lowest cost, good RTSP/ONVIF. Amcrest: stronger ONVIF, 3‑yr warranty, US support. Prefer PoE over WiFi. |
+| **Network** | 5–8 port unmanaged switch or 8-port PoE (802.3af/at) | $25–$90 | PoE switch if using PoE cameras; else router ports or WiFi. Keep cable runs &lt; 90 m; prefer Cat5e/Cat6. |
+| **Storage** | USB SSD or single HDD (0.5–2 TB) | $45–$90 | SD card not recommended for recordings; use external or NAS. |
+
+**Pros:** Very low cost; low power; good for learning and testing; fits Vigil’s edge story (Pi/Jetson in docs).  
+**Cons:** Limited AI throughput (low FPS); few simultaneous streams; no redundancy; not suitable for 24/7 evidence-grade or many cameras.
+
+**Setup difficulty: Easy** — Single device, minimal networking. Follow [Quick Start](#quick-start); set `CAMERA_SOURCES` to RTSP URLs or indices. Expect 2–4 hours for first working setup.
+
+---
+
+### Medium-end build
+
+**Goal:** Reliable 4–12 camera deployment with real-time AI (YOLO, pose, optional emotion/LPR), event and recording retention, and optional evidence-style export.
+
+| Component | Suggested | Approx. price (2025–2026) | Notes |
+|-----------|------------|---------------------------|--------|
+| **Compute** | NVIDIA Jetson Orin Nano Super Developer Kit | $249 | 67 TOPS; TensorRT; `JETSON_MODE=1`, YOLO TensorRT export; 4+ camera inputs. Ideal edge AI for Vigil. Existing Orin Nano 8GB can get “Super” via software update. Use adequate cooling for 24/7. |
+| **Alternative** | x86 mini PC or desktop (i5/R5, 16GB RAM) + NVIDIA GPU (RTX 4060 8GB or RTX 4070 12GB) | $450–$1,000 | RTX 4070 ~2× AI throughput of 4060; better for multi-stream YOLO/emotion. Run Docker or bare metal. |
+| **Cameras** | 4–12× 1080p–4K PoE, ONVIF (Reolink RLC-810A 4K ~$89; Amcrest 4K ~$120; Dahua/Hikvision entry $200+) | $90–$220 each | 4K increases storage and bandwidth; 1080p often sufficient for analytics. |
+| **Network** | 8–16 port PoE switch (802.3af/at, 45–300W budget) | $100–$320 | Ubiquiti USW-Lite-16-PoE ~$199, USW-16-PoE ~$299; TP-Link Omada or managed for VLANs. Size power budget for all cameras; plan bandwidth (e.g. 12× 4K ≈ 50–100 Mbps). |
+| **Storage** | 2–8 TB NAS or internal HDD/SSD (surveillance-rated preferred) | $85–$280 | Plan for 30-day retention; H.265 and motion-only reduce needs. See storage note above. |
+| **Optional** | Nginx reverse proxy, UPS | $0 (software) + $80–$160 | Recommended for production; see [Security & Compliance](#security--compliance). |
+
+**Pros:** Real-time AI at edge (Jetson) or on GPU; TensorRT/ONNX; scalable to 12 cameras; supports chain-of-custody export and retention.  
+**Cons:** Higher cost and setup than low-end; single-server failure still impacts whole system; no built-in RAID unless you add NAS/server.
+
+**Setup difficulty: Moderate** — Network design (VLANs, PoE), YOLO/TensorRT export on Jetson, gunicorn + reverse proxy. Expect 1–2 days for a stable, documented setup.
+
+---
+
+### High-end / enterprise build
+
+**Goal:** 24/7 evidence-grade operation, 12–64+ channels, long retention, redundancy, and alignment with NISTIR 8161 / CJIS-style practices (chain of custody, audit, legal hold).
+
+| Component | Suggested | Approx. price (2025–2026) | Notes |
+|-----------|------------|---------------------------|--------|
+| **Compute** | Server: 8–16 core Xeon/EPYC or high-end desktop (i7/i9, Ryzen 9), 64–128 GB RAM | $1,300–$4,200 | Run Vigil + gunicorn; optional Redis for multi-instance WebSocket. |
+| **GPU** | NVIDIA RTX 4070 (12GB) or RTX 4080 / A2000 / L40 (1–2 cards) for YOLO/emotion/pose at scale | $500–$2,600 | RTX 4070 preferred over 4060 for multi-stream AI (~2× throughput); TensorRT/ONNX; use yolov8s/m for accuracy. |
+| **NVR/appliance** | Optional 64-ch NVR: Hikvision DS-9664NI-M8 (8K), DS-7764NI-M4; Milesight MS-N8064-G (~$1,400–$1,700 no HDD) | $700–$3,200+ | 320–640 Mbps incoming; 8+ SATA, RAID; use for ingest or alongside Vigil server. |
+| **Cameras** | 12–64× 4K/8K ONVIF, NDAA/TAA-compliant if required (Axis, Hanwha, Bosch, Vivotek; Hikvision/Dahua not NDAA) | $200–$650+ each | Enterprise: WDR, on-camera analytics, PoE+; plan 320–400 Mbps for 64× 4K. Keep firmware updated; use camera VLAN. |
+| **Network** | 24–48 port PoE+ switch, 10 GbE uplink; optional second switch for redundancy | $420–$1,300 | Managed; VLANs for cameras vs. management; 30W per port for PTZ/heaters. |
+| **Storage** | RAID 5/6/60, 16–80+ TB (surveillance HDDs, e.g. Seagate SkyHawk), hot-swap bays | $850–$4,200+ | Redundancy and growth; 30–90 day retention at 4K; H.265 reduces footprint. |
+| **Other** | UPS, dual PSU, encrypted volume (LUKS), NTP, backup for DB and config | $220–$1,100 | See [RUNBOOKS.md](docs/RUNBOOKS.md), [KEY_MANAGEMENT.md](docs/KEY_MANAGEMENT.md), [BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md). |
+
+**Pros:** High channel count; redundancy and retention; supports incident bundles, legal hold, and audit; meets higher bar for evidence and compliance.  
+**Cons:** Significant cost and expertise; deployment and hardening (HTTPS, MFA, runbooks) required; ongoing ops and dependency/security audits (e.g. `pip audit`, [INSTALL_AUDIT.md](docs/INSTALL_AUDIT.md)).
+
+**Setup difficulty: Advanced** — Rack/network design, RAID, TLS, MFA, backup/restore, and runbooks. Plan 1–2 weeks for design, install, and documentation. Professional installation for cabling and camera placement typically **$125–$450 per camera** (labor ~$80–$200/camera; 6–8 hours for a 4-camera job common).
+
+---
+
+### Summary and references
+
+- **Vigil-specific:** Use `JETSON_MODE=1` and TensorRT on Jetson; see [YOLO_INTEGRATION.md](docs/YOLO_INTEGRATION.md). For production, follow [.env.example](.env.example) “highest standards” block and [STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md).
+- **Storage:** 1080p ≈ 6–10 GB/day/cam, 4K ≈ 20–24 GB/day/cam (24/7); H.265 ~50% savings vs H.264; motion-only 60–80% reduction. Add 20–30% buffer. Use [Seagate’s surveillance calculator](https://www.seagate.com/solutions/surveillance/surveillance-storage-calculator/) for exact sizing.
+- **Evidence and compliance:** High-end builds should implement encryption at rest, ENFORCE_HTTPS, fixity/checksums, and retention policies as in [AI_DETECTION_LOGS_STANDARDS.md](docs/AI_DETECTION_LOGS_STANDARDS.md) and [RUNBOOKS.md](docs/RUNBOOKS.md).
+
+**Quick planning checklist:** PoE run &lt; 90 m, Cat5e/Cat6 • Switch power budget and uplink bandwidth for all streams • Edge cooling (heatsink/fan) for 24/7 • NDAA/TAA if government or regulated • Camera placement and audio rules per [LEGAL_AND_ETHICS.md](docs/LEGAL_AND_ETHICS.md) • Camera VLAN and firmware updates.
+
+Pricing and product names are indicative (audit 2025–2026); verify with vendors and regional availability. Labor and licensing (e.g. Windows, support contracts) are not included in hardware estimates.
+
+---
+
 ## Project Structure
 
 | Path | Purpose |
@@ -291,6 +393,7 @@ Run `app.py` or gunicorn under systemd/supervisord; optionally Nginx. Set `JETSO
 | `proactive/` | Optional proactive predictor and log parsing. |
 | `vigil_upgrade/` | Optional upgrade path (tracker, ReID, storage). |
 | `scripts/` | audit-deps.sh, surveillance_log_parser, test_gait_and_env. |
+| `tests/` | Unit tests (integrity hash, geometry); run: `python -m unittest discover -s tests` or `python -m pytest tests/`. |
 | `run.sh` | Start backend; use .venv if present; build React if USE_REACT_APP=1 and dist missing. |
 
 ---
@@ -299,8 +402,10 @@ Run `app.py` or gunicorn under systemd/supervisord; optionally Nginx. Set `JETSO
 
 - **Database**: Back up `surveillance.db`; retention job prunes ai_data, events, and recordings by `RETENTION_DAYS`.
 - **Recordings**: Stored in app directory or `RECORDINGS_DIR`; pruned by retention; export via UI or API.
-- **Dependency audit**: Run `./scripts/audit-deps.sh` (or `pip audit`) for CVE checks. [docs/SYSTEM_RATING.md](docs/SYSTEM_RATING.md).
-- **Runbooks**: [docs/RUNBOOKS.md](docs/RUNBOOKS.md) — lost camera, export failed, DB locked, WebSocket, NTP, low disk.
+- **Testing**: From repo root with venv: `python scripts/test_gait_and_env.py` (gait/env); `python -m unittest discover -s tests` or `pytest tests/` (unit tests). Use `--live` for HTTP health checks.
+- **Dependency audit**: Run `./scripts/audit-deps.sh` (or `pip audit`) for CVE checks; recommended for production (BEST_PATH_FORWARD Phase 1). [docs/SYSTEM_RATING.md](docs/SYSTEM_RATING.md).
+- **Runbooks**: [docs/RUNBOOKS.md](docs/RUNBOOKS.md) — lost camera, export failed, DB locked, WebSocket, NTP, low disk, evidence/OSAC.
+- **Standards applied**: The project follows [docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md) and [docs/STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) for evidence, privacy, and security. Data quality roadmap: [docs/PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md).
 
 ---
 
@@ -324,7 +429,11 @@ More: [docs/RUNBOOKS.md](docs/RUNBOOKS.md).
 
 ### Standards & audit
 
-- [STANDARDS_RATING.md](docs/STANDARDS_RATING.md) — Highest-standards rating (80/100), criteria, gaps.
+- [STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) — **Project commitment**: best path integrated and applied going forward.
+- [BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md) — Phased roadmap to 90+ (config → data quality → security → optional).
+- [PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md) — Plan to bring each data point to 90+ with enterprise/LE/journal research and phased implementation.
+- [DATA_POINT_ACCURACY_RATING.md](docs/DATA_POINT_ACCURACY_RATING.md) — Per–data-point accuracy (1–100), improvements, and applied changes.
+- [STANDARDS_RATING.md](docs/STANDARDS_RATING.md) — Highest-standards rating (85/100), criteria, gaps.
 - [AI_DETECTION_LOGS_STANDARDS.md](docs/AI_DETECTION_LOGS_STANDARDS.md) — NISTIR 8161, SWGDE, NIST AI 100-4.
 - [AUDIT_DATA_COLLECTION.md](docs/AUDIT_DATA_COLLECTION.md) — Data collection and chain-of-custody audit.
 - [DATA_COLLECTION_RESEARCH.md](docs/DATA_COLLECTION_RESEARCH.md) — Collection pipeline, schema, primary-person, improvements.

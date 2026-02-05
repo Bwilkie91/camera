@@ -19,12 +19,13 @@ This document describes the **extended person and behavior attributes** added to
 
 | Field | Source | Env / policy |
 |-------|--------|--------------|
-| **perceived_gender** | DeepFace `gender` | Requires `ENABLE_EXTENDED_ATTRIBUTES=1` (default). |
-| **perceived_age_range** | DeepFace `age` → bands | 0-17, 18-29, 30-44, 45-59, 60+. |
+| **perceived_gender** | DeepFace `gender` on person crop | Requires `ENABLE_EXTENDED_ATTRIBUTES=1` (default). Crop resized to **224×224** for age/gender path (PLAN_90_PLUS; NIST/ISO alignment). |
+| **perceived_age_range** | DeepFace `age` → bands | 0-17, 18-29, 30-44, 45-59, 60+. Same 224×224 input. |
 | **perceived_ethnicity** | DeepFace `race` | **Only if `ENABLE_SENSITIVE_ATTRIBUTES=1`** (default **0**). Many jurisdictions and policies prohibit use; enable only where legally and ethically justified. |
 
 - **ENABLE_EXTENDED_ATTRIBUTES** (default `1`): Enables DeepFace age/gender and all heuristics.
 - **ENABLE_SENSITIVE_ATTRIBUTES** (default `0`): Enables perceived_ethnicity/race. Keep off unless required and compliant.
+- **FRVT / demographic fairness:** perceived_gender and perceived_age_range are **not NIST FRVT-validated** and may show demographic differentials (NISTIR 8429, Gender Shades). For high-stakes identification, use an FRVT-validated engine or conduct an internal audit. **GET /api/v1/what_we_collect** returns `face_attributes_note` when extended attributes are on. See **ACCURACY_RESEARCH_AND_IMPROVEMENTS.md** § Demographic fairness and **DATA_POINT_ACCURACY_RATING.md**.
 
 ### 1.3 Behavioral and intent
 
@@ -34,7 +35,7 @@ This document describes the **extended person and behavior attributes** added to
 | **predicted_intent** | Derived from event and pose | passing / loitering / crossing / standing / fall_or_collapse / unknown. When event is None: standing (if pose Standing), unknown otherwise. Fall → fall_or_collapse. |
 | **stress_level** | Emotion → stress proxy | high (Angry, Fear, Sad, Disgust), medium (Surprise), low (Neutral, Happy). |
 | **anomaly_score** | Heuristic | 0.0 (normal), 0.5 (loiter), 0.6 (line_cross), 0.7 (fall). |
-| **threat_score** | Heuristic 0–100 | Base 0; +25 suspicious, +20 high stress, +15 loiter. |
+| **threat_score** | Heuristic 0–100 | Base 0; +25 suspicious, +25 person_down, +20 high stress, +15 loiter, +10 line_cross (BEST_PATH Phase 2.3). |
 
 ### 1.4 Intoxication / drug / gait (stubs)
 

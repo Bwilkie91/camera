@@ -176,8 +176,14 @@ def _before_request():
     if os.environ.get('ENABLE_CORS', '').lower() in ('1', 'true', 'yes') and request.method == 'OPTIONS':
         from flask import make_response
         return make_response('', 204)
-    if os.environ.get('ENFORCE_HTTPS', '').lower() in ('1', 'true', 'yes'):
+    enforce_https = (os.environ.get('ENFORCE_HTTPS') or '').strip().lower()
+    if enforce_https in ('1', 'true', 'yes', 'reject'):
         if not request.is_secure and request.headers.get('X-Forwarded-Proto') != 'https':
+            if enforce_https == 'reject':
+                from flask import make_response
+                r = make_response(json.dumps({'error': 'https_required', 'message': 'HTTPS required (ENFORCE_HTTPS=reject)'}), 403)
+                r.headers['Content-Type'] = 'application/json'
+                return r
             from flask import redirect
             return redirect(request.url.replace('http://', 'https://', 1), code=302)
     return _check_session_timeout()
@@ -1305,10 +1311,11 @@ def get_audio_event():
         return 'None'
 
 
-# Keyword sets for audio sentiment/emotion/threat (same intensity as visual pipeline)
+# Keyword sets for audio sentiment/emotion/threat (PLAN_90_PLUS Phase C: expand from incident research)
 _AUDIO_THREAT_KEYWORDS = frozenset([
     'kill', 'bomb', 'gun', 'weapon', 'attack', 'hurt', 'destroy', 'fire', 'shoot', 'stab',
     'threat', 'threaten', 'die', 'dead', 'run', 'hide', 'help', 'emergency', 'police',
+    'intruder', 'break', 'breaking', 'danger', '911', 'intrusion',
 ])
 _AUDIO_NEGATIVE_KEYWORDS = frozenset([
     'angry', 'hate', 'stupid', 'wrong', 'bad', 'terrible', 'awful', 'no', 'stop', 'don\'t',
@@ -1319,6 +1326,7 @@ _AUDIO_POSITIVE_KEYWORDS = frozenset([
 ])
 _AUDIO_STRESS_KEYWORDS = frozenset([
     'help', 'emergency', 'hurry', 'quick', 'scared', 'afraid', 'panic', 'anxious', 'stress',
+    'worried', 'urgent', 'pain', 'fall', 'fell', 'down',
 ])
 _AUDIO_EMOTION_MAP = (
     (frozenset(['angry', 'mad', 'furious']), 'angry'),
@@ -1353,6 +1361,8 @@ def _extract_audio_attributes(transcription, energy_db, duration_sec):
         out['audio_keywords'] = None
         if energy_db is not None:
             out['audio_energy_db'] = round(energy_db, 1)
+            if energy_db > -25:
+                out['audio_stress_level'] = 'medium'
         return out
 
     out['audio_transcription'] = transcription[:2000] if len(transcription) > 2000 else transcription
@@ -1379,7 +1389,7 @@ def _extract_audio_attributes(transcription, energy_db, duration_sec):
             out['audio_emotion'] = emo
             break
 
-    # Stress
+    # Stress from keywords; fuse acoustic (energy_db) when available (Phase 2.5)
     stress_k = sum(1 for w in _AUDIO_STRESS_KEYWORDS if w in word_set)
     if threat_k > 0 or stress_k >= 2:
         out['audio_stress_level'] = 'high'
@@ -1387,6 +1397,11 @@ def _extract_audio_attributes(transcription, energy_db, duration_sec):
         out['audio_stress_level'] = 'medium'
     else:
         out['audio_stress_level'] = 'low'
+    if energy_db is not None:
+        if energy_db > -20 and out['audio_stress_level'] in ('medium', 'low'):
+            out['audio_stress_level'] = 'high'
+        elif energy_db > -25 and out['audio_stress_level'] == 'low' and (neg > 0 or threat_k > 0):
+            out['audio_stress_level'] = 'medium'
 
     # Threat score 0-100
     out['audio_threat_score'] = min(100, threat_k * 30 + stress_k * 15)
@@ -1536,9 +1551,13 @@ try:
 except Exception:
     pass
 
-# Motion detection: previous frame and threshold
+# Motion detection: previous frame and threshold; optional MOG2 backend (DATA_POINT_ACCURACY_RATING; IEEE)
 _prev_frame = None
-MOTION_THRESHOLD = 500
+_motion_bg_subtractor = None
+try:
+    MOTION_THRESHOLD = max(100, min(10000, int(os.environ.get('MOTION_THRESHOLD', '500'))))
+except (TypeError, ValueError):
+    MOTION_THRESHOLD = 500
 VEHICLE_CLASSES = {'car', 'truck', 'bus', 'motorcycle'}
 
 # Loitering / line-crossing config (from config.json or defaults)
@@ -1602,6 +1621,9 @@ def _apply_homography(camera_id, nx, ny):
         return None, None
 _zone_ticks = {}  # zone_index -> consecutive cycles with person in zone
 _prev_centroids = []  # for line-cross detection
+_line_cross_pending = []  # list of (side, count): confirm centroid stayed on opposite side for N cycles (BEST_PATH_FORWARD Phase 2.3)
+_primary_centroid_history = deque(maxlen=5)  # PLAN_90_PLUS: moving avg for line-cross (IEEE/Springer)
+_prev_smoothed_primary = None  # (cx, cy) pixel for previous frame
 
 
 def _point_in_polygon(px, py, poly):
@@ -1631,6 +1653,17 @@ def _segment_crosses_line(p1, p2, line):
     return 0 <= t <= 1 and 0 <= u <= 1
 
 
+def _point_side_of_line(cx, cy, line):
+    """Return which side of line (x1,y1,x2,y2) point (cx,cy) is on: 1 or -1 (or 0 on line). For debounce: same side = same sign."""
+    x1, y1, x2, y2 = line
+    d = (cx - x1) * (y2 - y1) - (cy - y1) * (x2 - x1)
+    if d > 0:
+        return 1
+    if d < 0:
+        return -1
+    return 0
+
+
 def _get_person_centroids(frame, results):
     """Return list of (cx, cy) for 'person' detections in pixel coords."""
     if not results or not results[0].boxes:
@@ -1647,6 +1680,27 @@ def _get_person_centroids(frame, results):
         cy = (xyxy[1] + xyxy[3]) / 2
         centroids.append((float(cx), float(cy)))
     return centroids
+
+
+def _get_primary_centroid_pixel(frame, results):
+    """Return (cx, cy) in pixel coords for primary (largest) person, or None. Used for centroid smoothing (PLAN_90_PLUS)."""
+    if not results or not results[0].boxes or not frame.size:
+        return None
+    names = results[0].names
+    boxes = results[0].boxes
+    best = None
+    best_area = 0
+    for i, cls in enumerate(boxes.cls):
+        if names.get(int(cls), '').lower() != 'person':
+            continue
+        xyxy = boxes.xyxy[i].cpu().numpy()
+        area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
+        if area > best_area:
+            best_area = area
+            cx = (xyxy[0] + xyxy[2]) / 2
+            cy = (xyxy[1] + xyxy[3]) / 2
+            best = (float(cx), float(cy))
+    return best
 
 
 def _get_primary_centroid_normalized(frame, results):
@@ -1754,16 +1808,55 @@ def _gait_notes_from_pose(results_pose):
     return 'normal'
 
 
+def _pose_label_from_landmarks(results_pose):
+    """
+    Derive Standing / Sitting / Walking from MediaPipe pose landmarks (BEST_PATH_FORWARD Phase 2.2).
+    MediaPipe: 11,12 shoulders; 23,24 hips; 25,26 knees (normalized 0-1, y down). Person down handled separately.
+    """
+    if not results_pose or not getattr(results_pose, 'pose_landmarks', None):
+        return 'Unknown'
+    lm = results_pose.pose_landmarks.landmark
+    if len(lm) < 27:
+        return 'Standing'
+    hip_cy = (lm[23].y + lm[24].y) * 0.5
+    knee_left = lm[25].y
+    knee_right = lm[26].y
+    knee_avg_y = (knee_left + knee_right) * 0.5
+    leg_extension = knee_avg_y - hip_cy  # positive when knees below hips (standing)
+    knee_spread = abs(knee_left - knee_right)
+    # Walking: one knee raised (large vertical difference between knees), legs not both down
+    if leg_extension > 0.04 and knee_spread > 0.07:
+        return 'Walking'
+    # Standing: knees clearly below hips
+    if leg_extension > 0.08:
+        return 'Standing'
+    # Sitting: knees near hip level or bent (small leg extension)
+    if -0.06 <= leg_extension <= 0.08:
+        return 'Sitting'
+    return 'Standing'
+
+
 def check_loiter_and_line_cross(frame, results):
-    """Update zone ticks, check line cross. Returns (loiter_detected, line_cross_detected, zones_with_person)."""
-    global _zone_ticks, _prev_centroids
+    """Update zone ticks, check line cross. Returns (loiter_detected, line_cross_detected, zones_with_person).
+    Line-cross debounce (BEST_PATH_FORWARD Phase 2.3): require centroid to stay on opposite side for 1-2 cycles.
+    PLAN_90_PLUS: optional centroid smoothing (moving avg over K frames) for primary person (IEEE/Springer)."""
+    global _zone_ticks, _prev_centroids, _line_cross_pending, _primary_centroid_history, _prev_smoothed_primary
     h, w = frame.shape[:2]
     centroids = _get_person_centroids(frame, results)
+    smooth_frames = max(0, min(10, int(os.environ.get('CENTROID_SMOOTHING_FRAMES', '5'))))
+    primary_px = _get_primary_centroid_pixel(frame, results)
+    if primary_px and smooth_frames > 0:
+        _primary_centroid_history.append(primary_px)
+        n = len(_primary_centroid_history)
+        smoothed_primary = (sum(p[0] for p in _primary_centroid_history) / n, sum(p[1] for p in _primary_centroid_history) / n)
+    else:
+        smoothed_primary = primary_px
     zones = _analytics_config.get('loiter_zones', [])
     loiter_cycles = max(1, _analytics_config.get('loiter_seconds', 30) // 10)
     loiter_detected = False
     line_cross_detected = False
     zones_with_person = []
+    debounce_cycles = max(1, min(3, int(os.environ.get('LINE_CROSS_DEBOUNCE_CYCLES', '1'))))
     # Scale zones to pixels
     for zi, poly in enumerate(zones):
         pixel_poly = [(p[0] * w, p[1] * h) for p in poly]
@@ -1776,20 +1869,63 @@ def check_loiter_and_line_cross(frame, results):
                 _zone_ticks[zi] = 0
         else:
             _zone_ticks[zi] = 0
+    # Line cross with debounce; optionally use smoothed primary segment (PLAN_90_PLUS)
+    lines_pixel = []
     for line in _analytics_config.get('crossing_lines', []):
         x1, y1, x2, y2 = line[0] * w, line[1] * h, line[2] * w, line[3] * h
-        line_pixel = (x1, y1, x2, y2)
+        lines_pixel.append((x1, y1, x2, y2))
+    for line_pixel in lines_pixel:
+        if smooth_frames > 0 and _prev_smoothed_primary is not None and smoothed_primary is not None:
+            if _segment_crosses_line(_prev_smoothed_primary, smoothed_primary, line_pixel):
+                side_curr = _point_side_of_line(smoothed_primary[0], smoothed_primary[1], line_pixel)
+                if side_curr != 0:
+                    _line_cross_pending.append((line_pixel, side_curr, 0))
         for curr in centroids:
             for prev in _prev_centroids:
                 if _segment_crosses_line(prev, curr, line_pixel):
-                    line_cross_detected = True
+                    side_curr = _point_side_of_line(curr[0], curr[1], line_pixel)
+                    if side_curr != 0:
+                        _line_cross_pending.append((line_pixel, side_curr, 0))
                     break
+    # Confirm pending: any centroid on same side this frame?
+    still_pending = []
+    check_centroids = list(centroids)
+    if smoothed_primary and smooth_frames > 0:
+        check_centroids.append(smoothed_primary)
+    for line_pixel, side, count in _line_cross_pending:
+        any_on_side = any(_point_side_of_line(cx, cy, line_pixel) == side for cx, cy in check_centroids)
+        if any_on_side:
+            count += 1
+            if count >= debounce_cycles:
+                line_cross_detected = True
+            else:
+                still_pending.append((line_pixel, side, count))
+    _line_cross_pending = still_pending[:6]  # cap pending entries
     _prev_centroids = centroids
+    _prev_smoothed_primary = smoothed_primary
     return loiter_detected, line_cross_detected, zones_with_person
 
 
 def detect_motion(frame):
-    global _prev_frame
+    global _prev_frame, _motion_bg_subtractor
+    backend = (os.environ.get('MOTION_BACKEND') or 'framediff').strip().lower()
+    if backend == 'mog2':
+        if _motion_bg_subtractor is None:
+            var_t = 16
+            try:
+                vt = int(os.environ.get('MOTION_MOG2_VAR_THRESHOLD', '16'))
+                if 4 <= vt <= 64:
+                    var_t = vt
+            except (TypeError, ValueError):
+                pass
+            _motion_bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=500, detectShadows=True, varThreshold=var_t)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        fg = _motion_bg_subtractor.apply(gray)
+        fg[fg == 127] = 0
+        kernel = np.ones((3, 3), np.uint8)
+        fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, kernel)
+        count = int(np.sum(fg > 0))
+        return count > MOTION_THRESHOLD
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
     if _prev_frame is None:
@@ -1810,8 +1946,8 @@ def _lpr_preprocess(roi):
     if roi is None or roi.size == 0:
         return None
     h, w = roi.shape[:2]
-    if w < 40 or h < 12:
-        roi = cv2.resize(roi, (max(80, w * 2), max(24, h * 2)), interpolation=cv2.INTER_CUBIC)
+    if w < 80 or h < 24:
+        roi = cv2.resize(roi, (max(160, w * 2), max(48, h * 2)), interpolation=cv2.INTER_CUBIC)
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY) if len(roi.shape) == 3 else roi
     try:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -1854,15 +1990,50 @@ def lpr_on_vehicle_roi(frame, results):
 
 # Lazy-loaded emotion recognizer (EmotiEffLib) for TensorFlow-free option
 _emotieff_recognizer = None
+_clahe_emotion = None  # Cached CLAHE for low-light emotion (avoids per-frame alloc)
+
+
+def _preprocess_low_light_emotion(img):
+    """Apply CLAHE on L channel when image is dark (BEST_PATH_FORWARD Phase 2.1; PLAN_90_PLUS Phase B). Returns BGR."""
+    global _clahe_emotion
+    if img is None or img.size == 0:
+        return img
+    try:
+        thresh = max(40, min(120, int(os.environ.get('EMOTION_CLAHE_THRESHOLD', '80'))))
+        if float(np.mean(img)) >= thresh:
+            return img
+        if _clahe_emotion is None:
+            _clahe_emotion = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        l = _clahe_emotion.apply(l)
+        lab = cv2.merge([l, a, b])
+        return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    except Exception:
+        return img
 
 
 def _get_dominant_emotion(frame, results=None):
-    """Unified emotion from DeepFace (TensorFlow) or EmotiEffLib (PyTorch/ONNX). Returns a single label e.g. Neutral, Happy."""
+    """Unified emotion from DeepFace (TensorFlow) or EmotiEffLib (PyTorch/ONNX). Returns a single label e.g. Neutral, Happy.
+    Min crop size 48x48 for reliability (BEST_PATH_FORWARD Phase 2.1, ACCURACY_RESEARCH_AND_IMPROVEMENTS).
+    Low-light: CLAHE on L channel when mean intensity < EMOTION_CLAHE_THRESHOLD (Phase 2.1)."""
+    min_crop = max(30, min(64, int(os.environ.get('EMOTION_MIN_CROP_SIZE', '48'))))
     backend = (os.environ.get('EMOTION_BACKEND') or 'auto').strip().lower()
     # Prefer DeepFace if explicitly set and available
     if (backend == 'deepface' or backend == 'auto') and DEEPFACE_AVAILABLE and DeepFace:
         try:
-            out = DeepFace.analyze(frame, actions=['emotion'])
+            # When we have person bbox, skip if crop would be too small (full frame is still used here)
+            if results and results[0].boxes and hasattr(results[0], 'names'):
+                names, boxes = results[0].names, results[0].boxes
+                for i, cls in enumerate(boxes.cls):
+                    if names.get(int(cls), '').lower() == 'person':
+                        xyxy = boxes.xyxy[i].cpu().numpy()
+                        bw, bh = int(xyxy[2] - xyxy[0]), int(xyxy[3] - xyxy[1])
+                        if bw < min_crop or bh < min_crop:
+                            return 'Neutral'
+                        break
+            inp = _preprocess_low_light_emotion(frame)
+            out = DeepFace.analyze(inp, actions=['emotion'])
             if out and isinstance(out, list):
                 out = out[0]
             if isinstance(out, dict) and 'dominant_emotion' in out:
@@ -1878,7 +2049,7 @@ def _get_dominant_emotion(frame, results=None):
                 if models:
                     _emotieff_recognizer = EmotiEffLibRecognizer(device='cpu', model_name=models[0])
             if _emotieff_recognizer is not None:
-                # Optionally crop to first person bbox for better accuracy
+                # Optionally crop to first person bbox for better accuracy; min 48x48 (Phase 2.1)
                 crop = frame
                 if results and results[0].boxes and hasattr(results[0], 'names'):
                     names, boxes = results[0].names, results[0].boxes
@@ -1890,9 +2061,11 @@ def _get_dominant_emotion(frame, results=None):
                             pad = 20
                             x1, y1 = max(0, x1 - pad), max(0, y1 - pad)
                             x2, y2 = min(w, x2 + pad), min(h, y2 + pad)
-                            if x2 > x1 and y2 > y1 and (y2 - y1) >= 30 and (x2 - x1) >= 30:
+                            cw, ch = x2 - x1, y2 - y1
+                            if x2 > x1 and y2 > y1 and cw >= min_crop and ch >= min_crop:
                                 crop = frame[y1:y2, x1:x2]
                             break
+                crop = _preprocess_low_light_emotion(crop)
                 # EmotiEffLib often expects RGB; OpenCV frame is BGR
                 rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
                 pred = _emotieff_recognizer.predict_emotions([rgb])
@@ -2075,10 +2248,17 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
         x1, y1, x2, y2 = person_bbox
         bh, bw = y2 - y1, x2 - x1
         frame_h, frame_w = frame.shape[:2]
-        # Estimated height: scale with frame so resolution-independent; ~170cm when person fills ~0.45 of frame height
-        ref_px = max(100, frame_h * 0.45)
+        # Estimated height: scale with frame so resolution-independent; ~170cm when person fills ~0.45 of frame height.
+        # Optional per-camera calibration: HEIGHT_REF_CM and HEIGHT_REF_PX (BEST_PATH_FORWARD Phase 2.4).
+        try:
+            ref_cm = int(os.environ.get('HEIGHT_REF_CM', '170'))
+            ref_px_env = os.environ.get('HEIGHT_REF_PX', '').strip()
+        except (TypeError, ValueError):
+            ref_cm = 170
+            ref_px_env = ''
+        ref_px = int(ref_px_env) if ref_px_env else max(100, frame_h * 0.45)
         if bh >= 30:
-            out['estimated_height_cm'] = int(170 * (bh / ref_px))
+            out['estimated_height_cm'] = int(ref_cm * (bh / ref_px))
             out['estimated_height_cm'] = max(120, min(220, out['estimated_height_cm']))
         # Build from aspect: width/height of bbox (wider = heavier)
         if bh > 20:
@@ -2124,7 +2304,12 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
         out['anomaly_score'] = 0.0
     elif event == 'None' or not event:
         out['suspicious_behavior'] = 'none'
-        out['predicted_intent'] = 'standing' if pose == 'Standing' else ('present' if pose == 'Person down' else 'unknown')
+        out['predicted_intent'] = (
+            'standing' if pose == 'Standing' else
+            'walking' if pose == 'Walking' else
+            'sitting' if pose == 'Sitting' else
+            'present' if pose == 'Person down' else 'unknown'
+        )
         out['anomaly_score'] = 0.0
     else:
         out['suspicious_behavior'] = 'none'
@@ -2144,7 +2329,7 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
     out['drug_use_indicator'] = 'none'
     out['gait_notes'] = _gait_notes_from_pose(results_pose) if (_is_gait_notes_enabled() and results_pose) else 'unknown'
 
-    # Threat score 0-100 heuristic (suspicious_behavior already set for Fall/loiter/line_cross)
+    # Threat score 0-100 heuristic (BEST_PATH_FORWARD Phase 2.3: aligned with event)
     threat = 0
     if out.get('suspicious_behavior') not in ('none', None):
         threat += 25
@@ -2154,6 +2339,8 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
         threat += 20
     if event == 'Loitering Detected':
         threat += 15
+    if event == 'Line Crossing Detected':
+        threat += 10
     out['threat_score'] = min(100, threat)
 
     # Illumination and time period (no extra inference)
@@ -2197,6 +2384,7 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
         out['attention_region'] = 'unknown'
 
     # DeepFace: age, gender (and optionally race) when enabled - single call for speed
+    # PLAN_90_PLUS: resize to 224x224 for age/gender path (NIST FRVT, ISO 30137-1; improves accuracy)
     if enable_extended and frame is not None and frame.size > 0:
         try:
             actions = ['age', 'gender']
@@ -2212,6 +2400,14 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
                     x2, y2 = min(w, x2 + pad), min(h, y2 + pad)
                     if x2 > x1 and y2 > y1 and (y2 - y1) >= 40:
                         crop = frame[y1:y2, x1:x2]
+                # Target 224x224 for age/gender (enterprise 90+ plan; NIST FRVT / ISO 30137-1)
+                if crop is not None and crop.size > 0:
+                    ch, cw = crop.shape[:2]
+                    if cw != 224 or ch != 224:
+                        try:
+                            crop = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_LINEAR)
+                        except Exception:
+                            pass
                 df_out = DeepFace.analyze(crop, actions=actions, enforce_detection=False)
                 if df_out and isinstance(df_out, list):
                     df_out = df_out[0]
@@ -2532,13 +2728,12 @@ def analyze_frame():
                     _update_pipeline_state('pose', 'Estimating pose…', None, None)
                     results_pose = None
                     pose = 'Unknown'
+                    pose_min_crop = max(32, min(64, int(os.environ.get('POSE_MIN_CROP_SIZE', '48'))))
                     if MEDIAPIPE_AVAILABLE and mp_pose:
-                        results_pose = mp_pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                        pose = 'Unknown' if not results_pose.pose_landmarks else 'Standing'
-                        if pose == 'Unknown' and results and results[0].boxes and hasattr(results[0], 'names'):
+                        # Phase 2.2: prefer person crop when available for more stable landmarks
+                        if results and results[0].boxes and hasattr(results[0], 'names'):
                             person_idxs = [i for i, c in enumerate(results[0].boxes.cls) if results[0].names.get(int(c), '').lower() == 'person']
                             if person_idxs:
-                                # Use largest person bbox (by area) for crop fallback so we get pose more often
                                 boxes = results[0].boxes
                                 best_idx = max(person_idxs, key=lambda i: (boxes.xyxy[i][2] - boxes.xyxy[i][0]) * (boxes.xyxy[i][3] - boxes.xyxy[i][1]))
                                 xyxy = boxes.xyxy[best_idx].cpu().numpy()
@@ -2549,13 +2744,35 @@ def analyze_frame():
                                 y1 = max(0, int(xyxy[1] - pad * bh))
                                 x2 = min(w, int(xyxy[2] + pad * bw))
                                 y2 = min(h, int(xyxy[3] + pad * bh))
-                                if x2 > x1 and y2 > y1 and (y2 - y1) >= 32 and (x2 - x1) >= 32:
+                                if x2 > x1 and y2 > y1 and (y2 - y1) >= pose_min_crop and (x2 - x1) >= pose_min_crop:
                                     crop = frame[y1:y2, x1:x2]
-                                    res_crop = mp_pose.process(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
-                                    if getattr(res_crop, 'pose_landmarks', None):
-                                        results_pose = res_crop
-                                        pose = 'Standing'
-                        if pose == 'Standing' and _detect_person_down(frame, results, results_pose):
+                                    results_pose = mp_pose.process(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+                                    if getattr(results_pose, 'pose_landmarks', None):
+                                        pose = _pose_label_from_landmarks(results_pose)
+                        if pose == 'Unknown':
+                            results_pose = mp_pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                            if getattr(results_pose, 'pose_landmarks', None):
+                                pose = _pose_label_from_landmarks(results_pose)
+                            elif results and results[0].boxes and hasattr(results[0], 'names'):
+                                person_idxs = [i for i, c in enumerate(results[0].boxes.cls) if results[0].names.get(int(c), '').lower() == 'person']
+                                if person_idxs:
+                                    boxes = results[0].boxes
+                                    best_idx = max(person_idxs, key=lambda i: (boxes.xyxy[i][2] - boxes.xyxy[i][0]) * (boxes.xyxy[i][3] - boxes.xyxy[i][1]))
+                                    xyxy = boxes.xyxy[best_idx].cpu().numpy()
+                                    h, w = frame.shape[:2]
+                                    pad = 0.15
+                                    bw, bh = xyxy[2] - xyxy[0], xyxy[3] - xyxy[1]
+                                    x1 = max(0, int(xyxy[0] - pad * bw))
+                                    y1 = max(0, int(xyxy[1] - pad * bh))
+                                    x2 = min(w, int(xyxy[2] + pad * bw))
+                                    y2 = min(h, int(xyxy[3] + pad * bh))
+                                    if x2 > x1 and y2 > y1 and (y2 - y1) >= pose_min_crop and (x2 - x1) >= pose_min_crop:
+                                        crop = frame[y1:y2, x1:x2]
+                                        res_crop = mp_pose.process(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+                                        if getattr(res_crop, 'pose_landmarks', None):
+                                            results_pose = res_crop
+                                            pose = _pose_label_from_landmarks(results_pose)
+                        if pose in ('Standing', 'Walking') and _detect_person_down(frame, results, results_pose):
                             pose = 'Person down'
                     _update_pipeline_state('pose', 'Pose: %s' % pose, pose, None)
 
@@ -2571,7 +2788,13 @@ def analyze_frame():
                         emotion = _get_dominant_emotion(frame, results)
                         _update_pipeline_state('emotion', 'Emotion: %s' % (emotion or 'Unknown'), emotion, None)
                         _update_pipeline_state('scene', 'Classifying scene…', None, None)
-                        scene = 'Indoor' if np.mean(frame) < 100 else 'Outdoor'
+                        # Scene: lower-half mean + variance (PLAN_90_PLUS; IEEE/Sciencedirect); Indoor = low mean and low var
+                        h, w = frame.shape[:2]
+                        lower_half = frame[h // 2:, :] if h >= 2 else frame
+                        scene_mean = float(np.mean(lower_half))
+                        scene_var = float(np.var(lower_half)) if lower_half.size else 0
+                        var_max = max(1000, min(20000, int(os.environ.get('SCENE_VAR_MAX_INDOOR', '5000'))))
+                        scene = 'Indoor' if (scene_mean < 100 and scene_var < var_max) else 'Outdoor'
                         license_plate = lpr_on_vehicle_roi(frame, results)
                         _update_pipeline_state('scene', 'Scene: %s' % scene, scene, None)
 
@@ -3225,20 +3448,30 @@ def api_v1_what_we_collect():
         retention_days = 0
     cfg = _recording_config
     ai_detail = cfg.get('ai_detail') or 'full'
-    return jsonify({
+    lpr_on = ai_detail != 'minimal'
+    emotion_face_on = ai_detail != 'minimal'
+    dpia_recommended = lpr_on or emotion_face_on
+    extended_on = os.environ.get('ENABLE_EXTENDED_ATTRIBUTES', '1').strip().lower() in ('1', 'true', 'yes')
+    out = {
         'video': True,
         'audio': bool(cfg.get('capture_audio') and AUDIO_AVAILABLE),
         'motion': True,
         'loitering': True,
         'line_crossing': True,
         'fall_detection': True,
-        'lpr': ai_detail != 'minimal',
-        'emotion_or_face': ai_detail != 'minimal',
+        'lpr': lpr_on,
+        'emotion_or_face': emotion_face_on,
         'wifi_presence': bool(cfg.get('capture_wifi')),
         'thermal': bool(cfg.get('capture_thermal')),
         'retention_days': retention_days,
         'privacy_preset': _analytics_config.get('privacy_preset', 'full'),
-    })
+        'dpia_recommended': dpia_recommended,
+        'docs_privacy': 'docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md',
+        'docs_research': 'docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md',
+    }
+    if dpia_recommended and extended_on:
+        out['face_attributes_note'] = 'Perceived age/gender are not NIST FRVT-validated; may show demographic differentials (NISTIR 8429).'
+    return jsonify(out)
 
 
 @app.route('/api/audio_toggle', methods=['POST'])
@@ -3913,6 +4146,7 @@ def recording_manifest(filename):
         'sha256': current_sha256,
         'system_id': os.environ.get('SYSTEM_ID') or platform.node() or 'surveillance',
         'camera_id': '0',
+        'image_type': 'primary',  # OSAC 2024-N-0011 / BEST_PATH Phase 3.7: stored recording = primary image
     }
     try:
         get_cursor().execute('SELECT sha256, checked_at FROM recording_fixity WHERE path = ?', (basename,))
@@ -4654,6 +4888,15 @@ def api_v1_incident_bundle():
             for r in recordings_in_range if r.get('sha256_verified_at_export')
         ] + [{'type': 'ai_data', 'export_url': f'/export_data?date_from={date_from}&date_to={date_to}', 'verified_at_export_utc': export_utc}],
     }
+    cameras_in_scope = [camera_id] if camera_id else list(sorted(_cameras.keys()))
+    collection_checklist = {
+        'description': 'SWGDE 18-F-002: evidence collection context for this export.',
+        'operator': operator,
+        'purpose': 'incident_bundle',
+        'cameras': cameras_in_scope,
+        'retention_policy_days': retention_days,
+        'export_utc': export_utc,
+    }
     manifest = {
         'export_utc': export_utc,
         'operator': operator,
@@ -4664,8 +4907,10 @@ def api_v1_incident_bundle():
         'camera_id_filter': camera_id,
         'recordings': recordings_in_range,
         'preservation_checklist': preservation_checklist,
+        'collection_checklist': collection_checklist,
         'ai_data_export_url': f'/export_data?date_from={date_from}&date_to={date_to}',
         'purpose': 'incident_bundle',
+        'image_type': 'working',  # OSAC 2024-N-0011 / BEST_PATH Phase 3.7: export = working image
     }
     _audit(operator, 'incident_bundle', 'export', json.dumps({'from': date_from, 'to': date_to, 'recordings_count': len(recordings_in_range)}))
     return jsonify({'manifest': manifest})

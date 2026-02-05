@@ -14,6 +14,7 @@ Vigil’s AI detection and event logging is aligned with **government and academ
 | **NIST AI 100-4** | Digital Content Transparency / Synthetic Content | Provenance of AI-generated or AI-assisted content; recording of model/source. |
 | **CJIS Security Policy** | Criminal Justice Information Services | Audit, access control, and integrity requirements for systems handling CJI. |
 | **IEC 62676-2-32 / ONVIF** | Video surveillance recording and export | Export file format, metadata, and integrity (referenced by NISTIR 8161). |
+| **SWGDE 17-V-001** | Technical Overview of Digital Video Files | Formats, codecs, metadata; export uses MP4/H.264 when ffmpeg available and NISTIR-style headers (RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE §2). |
 
 ---
 

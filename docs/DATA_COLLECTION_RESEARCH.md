@@ -39,17 +39,65 @@ This document summarizes how Vigil collects AI detection data, improvements made
 
 ---
 
+## 3.1 Log export quality score — sample 2/5/26 (1–100, 100 = best in class)
+
+Review of a single exported row (date 2/5/26, time 14:54:48, person, Motion Detected, outdoor, dusk) against best-in-class evidence and analytics standards.
+
+| Dimension | Score | Notes |
+|-----------|-------|--------|
+| **Chain of custody & provenance** | 92 | `timestamp_utc` (ISO UTC), `model_version` (yolov8n.pt), `system_id` (Mac.attlocal.net), `integrity_hash` present. Missing: export-level SHA-256 and operator in row (handled at export). |
+| **Identity & demographics** | 35 | `individual` = "Unidentified"; `perceived_gender` / `perceived_age_range` empty (no face path). Only `hair_color` (gray) and `clothing_description` (gray top/body) populated. Best-in-class: stable ID or face_match_confidence, age/gender when face visible. |
+| **Pose, emotion, behavior** | 65 | Pose=Standing, emotion=Neutral, `predicted_intent`=passing, `gait_notes`=normal. `facial_features` duplicates pose/emotion. No Sitting/Walking nuance; emotion from full frame or single crop. |
+| **Scene & environment** | 70 | Scene=Outdoor, `illumination_band`=normal, `period_of_day_utc`=dusk. No world_x/world_y (homography not configured). Centroid_nx/ny present (0.40, 0.77). |
+| **Threat & anomaly** | 40 | `threat_score`=0, `anomaly_score`=0, `suspicious_behavior`=none. Event="Motion Detected" only; no loiter/line-cross. Best-in-class: calibrated threat/anomaly and behavior labels. |
+| **Audio** | 25 | All audio fields None/neutral/silence/0; no transcription or speaker attributes. Acceptable if no mic; otherwise best-in-class needs real ASR + sentiment/emotion. |
+| **Accuracy & calibration** | 50 | `estimated_height_cm`=120 (lower clamp — may be real or calibration); `build`=medium. No per-camera height ref or LPR/plate data. |
+| **Schema & completeness** | 88 | All canonical columns present; no null column gaps; hash covers canonical set. |
+
+**Overall (weighted toward evidence + identity + behavior):** **~58/100** (baseline sample). Strong on provenance and schema; weak on identity, demographics, threat/behavior nuance, and audio. **Note:** With applied improvements (§4, STANDARDS_APPLIED), pose, emotion, scene, motion, loiter/line, and threat/behavior dimensions are improved; re-scoring the same or a similar sample would yield a higher effective score.
+
+### Improvements to reach best-in-class (90+)
+
+1. **Identity & demographics (→ 85+)**  
+   - Enable **ENABLE_EXTENDED_ATTRIBUTES=1** and ensure person/face crop ≥ 48×48 (ideally 224×224 for DeepFace) so `perceived_gender` and `perceived_age_range` populate when a face is detected.  
+   - Optionally use ReID/watchlist to replace "Unidentified" with a stable `individual` or set `face_match_confidence` when configured.
+
+2. **Pose & emotion (→ 80+)**  
+   - Run MediaPipe on **person crop** (not only full frame) and derive Sitting/Walking/Standing from landmarks.  
+   - Preprocess low-light crops (CLAHE/gamma) and use minimum 48×48 crop for emotion so Neutral is not default for poor face visibility.
+
+3. **Threat & behavior (→ 75+)**  
+   - Configure loiter zones and crossing lines; use centroid smoothing and debounce so loiter/line-cross events appear when applicable.  
+   - Keep threat_score/anomaly_score aligned with events (e.g. loiter → higher anomaly) and document calibration.
+
+4. **Scene & world position (→ 85+)**  
+   - Add **homography** (`config/homography.json`) per camera so `world_x`, `world_y` are filled for floor-plane position and mapping/heatmaps.
+
+5. **Audio (if used) (→ 80+)**  
+   - Enable `capture_audio` and a quality ASR (e.g. Google/Whisper/Deepgram) so `audio_transcription`, `audio_emotion`, `audio_stress_level` reflect real speech; fuse acoustic features with text for stress.
+
+6. **Height & calibration (→ 70+)**  
+   - If many rows sit at 120 or 220 cm, add per-camera `HEIGHT_REF_CM` / `HEIGHT_REF_PX` (or config) and document in ACCURACY_RESEARCH_AND_IMPROVEMENTS.md.
+
+Implementing (1)–(4) and (6) would bring this sample's effective score into the **high 70s–low 80s**; adding (5) when audio is in scope would push toward **90+** for full best-in-class.
+
+**Prioritized roadmap:** See **[BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](BEST_PATH_FORWARD_HIGHEST_STANDARDS.md)** for the full path (config → data quality → security & evidence).
+
+**Applied improvements:** Many of the improvements above are now implemented. See **[STANDARDS_APPLIED.md](STANDARDS_APPLIED.md)**, **[PLAN_90_PLUS_DATA_POINTS.md](PLAN_90_PLUS_DATA_POINTS.md)**, and **[DATA_POINT_ACCURACY_RATING.md](DATA_POINT_ACCURACY_RATING.md)** for what is integrated. Re-score the sample (§3.1) when convenient.
+
+---
+
 ## 4. Research-backed next steps (from ACCURACY_RESEARCH_AND_IMPROVEMENTS.md)
 
-| Area | Suggestion | Effort |
+| Area | Suggestion | Status |
 |------|------------|--------|
-| **YOLO** | Already using `YOLO_CONF` and per-class `YOLO_CLASS_CONF`; consider larger model (e.g. yolov8s/m) for better recall. | Low |
-| **Emotion** | Preprocess crop (CLAHE/gamma) when mean intensity low; minimum crop size 48×48 for DeepFace. | Medium |
-| **Pose** | Already running MediaPipe on person crop fallback; optional: richer label (Sitting/Walking/Standing) from landmarks. | Medium |
-| **Scene** | Use mean of lower half or mean+variance; optional lightweight indoor/outdoor classifier. | Low–Medium |
-| **LPR** | Preprocess ROI (grayscale, CLAHE, morph); upscale small ROIs before Tesseract. | Medium |
-| **Motion** | Optional MOG2/KNN background subtractor; morphology and contour area filter. | Medium |
-| **Loiter/line** | Centroid smoothing over last K frames; debounce line cross (require 1–2 cycles on opposite side). | Medium |
+| **YOLO** | YOLO_CONF and YOLO_CLASS_CONF; consider larger model (yolov8s/m) for better recall. | **Applied** (filter in place). |
+| **Emotion** | CLAHE when mean intensity low; min crop 48×48; 224×224 for age/gender. | **Applied** (EMOTION_CLAHE_THRESHOLD, EMOTION_MIN_CROP_SIZE, 224×224 in app.py). |
+| **Pose** | MediaPipe on person crop; Sitting/Walking/Standing from landmarks. | **Applied** (POSE_MIN_CROP_SIZE, _pose_label_from_landmarks). |
+| **Scene** | Lower-half mean + variance; optional classifier. | **Applied** (lower-half mean, SCENE_VAR_MAX_INDOOR). |
+| **LPR** | Preprocess ROI; upscale small ROIs (&lt;80×24 px). | **Applied** (_lpr_preprocess, ENABLE_LPR_PREPROCESS). |
+| **Motion** | MOG2/KNN + morphology; configurable threshold. | **Applied** (MOTION_BACKEND=mog2, MOTION_THRESHOLD, MOTION_MOG2_VAR_THRESHOLD). |
+| **Loiter/line** | Centroid smoothing; debounce line cross. | **Applied** (CENTROID_SMOOTHING_FRAMES, LINE_CROSS_DEBOUNCE_CYCLES). |
 
 ---
 
@@ -65,6 +113,19 @@ This document summarizes how Vigil collects AI detection data, improvements made
 | `ENABLE_GAIT_NOTES` | When 1, derive gait_notes from MediaPipe pose. |
 | Recording config `ai_detail` | `full` = extended attributes; `minimal` = date, time, event, object, camera_id, timestamp_utc only. |
 | Recording config `capture_audio` | When true, fill audio_* fields from microphone/transcription. |
+| `EMOTION_MIN_CROP_SIZE` | Min person crop size for emotion (default 48); Phase 2.1. |
+| `LINE_CROSS_DEBOUNCE_CYCLES` | Cycles centroid must stay on opposite side before line_cross fires (default 1); Phase 2.3. |
+| `POSE_MIN_CROP_SIZE` | Min person crop size for pose (default 48); Phase 2.2. Pose label: Standing / Sitting / Walking from landmarks. |
+| `MOTION_BACKEND` | `framediff` (default) or `mog2`; MOG2 + morphology for better motion detection (DATA_POINT_ACCURACY_RATING). |
+| `MOTION_THRESHOLD` | Pixel count threshold for motion (100–10000; default 500). |
+| `MOTION_MOG2_VAR_THRESHOLD` | MOG2 varThreshold (4–64; default 16) when MOTION_BACKEND=mog2 (PLAN_90_PLUS). |
+| `EMOTION_CLAHE_THRESHOLD` | Mean intensity below which CLAHE is applied on L channel for emotion (default 80; 0=off). Phase 2.1. |
+| `SCENE_VAR_MAX_INDOOR` | Max lower-half variance for Indoor classification (default 5000); Indoor only when mean &lt; 100 and var &lt; this (PLAN_90_PLUS). |
+| `CENTROID_SMOOTHING_FRAMES` | Moving average of primary centroid over N frames for line-cross (default 5; 0=off). PLAN_90_PLUS. |
+
+**Scene:** Indoor/Outdoor uses **lower-half mean** + **variance** (SCENE_VAR_MAX_INDOOR). **LPR:** ROI upscaled when width &lt; 80 px or height &lt; 24 px. **Loiter/line:** Centroid smoothing (CENTROID_SMOOTHING_FRAMES) and line-cross debounce (LINE_CROSS_DEBOUNCE_CYCLES).
+
+**Audio (Phase 2.5):** `audio_stress_level` fuses `energy_db`: very loud audio boosts stress; no transcription but loud → medium. ASR quality (Google/Whisper/Deepgram) remains config.
 
 ---
 
@@ -73,4 +134,5 @@ This document summarizes how Vigil collects AI detection data, improvements made
 - **AUDIT_DATA_COLLECTION.md** — Data collection and chain-of-custody audit.
 - **AI_DETECTION_LOGS_STANDARDS.md** — NISTIR 8161, SWGDE, export integrity.
 - **ACCURACY_RESEARCH_AND_IMPROVEMENTS.md** — Per-field sources and accuracy improvements.
+- **DATA_POINT_ACCURACY_RATING.md** — Per–data-point rating (1–100) and improvements (military, LE, academic sources).
 - **GAIT_AND_POSE_OPEN_SOURCE.md** — Pose and gait notes (MediaPipe).

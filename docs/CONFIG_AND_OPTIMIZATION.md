@@ -215,6 +215,22 @@ Bounds in code: interval 5–60 s, batch 1–50.
 
 ---
 
+## 10. Data quality & evidence (90+ plan)
+
+Env vars for PLAN_90_PLUS and BEST_PATH_FORWARD data-quality and evidence alignment. See **docs/PLAN_90_PLUS_DATA_POINTS.md** and **docs/STANDARDS_APPLIED.md**.
+
+| Env var | Default | Purpose |
+|---------|--------|---------|
+| `EMOTION_CLAHE_THRESHOLD` | 80 | Mean intensity below which CLAHE is applied on L channel for emotion (0 = off). Phase 2.1. |
+| `SCENE_VAR_MAX_INDOOR` | 5000 | Max lower-half variance for Indoor; Indoor only when mean < 100 and var < this. |
+| `CENTROID_SMOOTHING_FRAMES` | 5 | Moving average of primary centroid over N frames for line-cross (0 = off). |
+| `MOTION_MOG2_VAR_THRESHOLD` | 16 | MOG2 varThreshold (4–64) when `MOTION_BACKEND=mog2`. |
+| `ENFORCE_HTTPS` | 0 | `1` = redirect HTTP→HTTPS; `reject` = return 403 for non-HTTPS (Phase 3.2). |
+
+Also: `EMOTION_MIN_CROP_SIZE`, `POSE_MIN_CROP_SIZE`, `LINE_CROSS_DEBOUNCE_CYCLES`, `HEIGHT_REF_CM`, `HEIGHT_REF_PX`, `MOTION_BACKEND`, `MOTION_THRESHOLD`. Full list in **docs/DATA_COLLECTION_RESEARCH.md** §5.
+
+---
+
 ## Quick reference: env presets
 
 **Speed (real-time, low CPU)**  

@@ -69,8 +69,8 @@ Comparison of the Vigil (Edge Video Security) system against government and high
 
 | Requirement | Government / Best-in-Class | Current System | Gap |
 |-------------|----------------------------|----------------|-----|
-| Defined retention | Policy for video, AI data, audit, logs | RETENTION_DAYS for ai_data, events, recordings; not audit_log | **Partial** |
-| Legal hold / export for disclosure | Ability to preserve and export for legal | Export CSV; no formal hold or NISTIR-style export | **Partial** |
+| Defined retention | Policy for video, AI data, audit, logs | RETENTION_DAYS for ai_data, events, recordings; AUDIT_RETENTION_DAYS for audit_log | **Done** |
+| Legal hold / export for disclosure | Ability to preserve and export for legal | **GET/POST/DELETE /api/v1/legal_hold**; retention excludes held items; incident_bundle (NISTIR-style manifest) | **Done** |
 
 ---
 
@@ -83,13 +83,13 @@ Comparison of the Vigil (Edge Video Security) system against government and high
 | Data Protection & Encryption | 20% | 30 | 6.0 |
 | Video Export & Chain of Custody | 15% | 82 | 12.3 |
 | Operational Security | 10% | 78 | 7.8 |
-| Retention & Compliance | 10% | 75 | 7.5 |
-| **Total** | 100% | — | **74.0** |
+| Retention & Compliance | 10% | 85 | 8.5 |
+| **Total** | 100% | — | **75.0** |
 
-**Rounded overall score: 74/100** for government / best-in-class alignment (up from 69; 39 baseline). See **docs/SYSTEM_RATING.md** for the score breakdown and path to higher ratings.
+**Rounded overall score: 75/100** for government / best-in-class alignment (up from 69; 39 baseline). See **docs/SYSTEM_RATING.md** for the score breakdown and path to higher ratings.
 
 - **Strengths**: **Resource-level RBAC** (user_site_roles, per-site filtering), RBAC roles, optional TOTP MFA, **password expiry and history** (PASSWORD_EXPIRY_DAYS, PASSWORD_HISTORY_COUNT, /change_password, /me), session timeout, account lockout, password policy, audit with IP/User-Agent and config_change, per-row audit integrity_hash and GET /audit_log/verify, separate audit retention, audit log export with SHA-256, **optional MP4 recording export (?format=mp4)**, video recording export with metadata + SHA-256, configurable CSP, HTTPS enforcement, FIPS/crypto scope documented, incident response procedures, security headers, retention job, encryption-at-rest guidance, keyboard shortcut ? for help.
-- **Remaining gaps**: Encryption at rest (app-level); key management; TLS enforcement; input validation schema; dependency CVE process; formal legal hold.
+- **Remaining gaps**: Encryption at rest (app-level); key management; input validation schema; dependency CVE process. (TLS enforcement and legal hold are implemented: ENFORCE_HTTPS, /api/v1/legal_hold.)
 
 ---
 
@@ -126,7 +126,7 @@ Comparison of the Vigil (Edge Video Security) system against government and high
 
 ## Summary
 
-The system now **scores ~74/100** with **resource-level RBAC** (user_site_roles, per-site filtering), **password expiry and history**, **optional MP4 export** (?format=mp4), audit log integrity, FIPS/crypto documentation, incident response procedures, and keyboard accessibility. Remaining gaps: encryption at rest (app-level), key management, TLS enforcement, dependency CVE process.
+The system now **scores ~75/100** with **resource-level RBAC** (user_site_roles, per-site filtering), **password expiry and history**, **optional MP4 export** (?format=mp4), audit log integrity, FIPS/crypto documentation, incident response procedures, keyboard accessibility, **legal hold API**, and **ENFORCE_HTTPS** (redirect or reject). Remaining gaps: encryption at rest (app-level), key management, dependency CVE process.
 
 ---
 
@@ -165,4 +165,6 @@ Reference: Enterprise VMS (e.g. Milestone XProtect Smart Client, Genetec), SOC d
 | 8 | Resource-level RBAC | CJIS/NIST | **Done** (user_site_roles, GET/PUT /api/v1/users/<id>/sites; events/data/export scoped) |
 | 9 | MP4 export | NISTIR 8161 | **Done** (?format=mp4 when ffmpeg available) |
 
-References: NIST IR 8523 (MFA for CJIS, Sept 2025); CJIS Security Policy v6.0 (late 2024); NIST SP 1800-35 (ZTA, 2025); PE-6(3) video surveillance (SP 800-53 R5).
+References: NIST IR 8523 (MFA for CJIS, Sept 2025); CJIS Security Policy v6.0 (late 2024); NIST SP 1800-35 (ZTA, 2025); PE-6(3) video surveillance (SP 800-53 R5). **Additional sources (military, civilian, academic, LE):** [RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md](RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md).
+
+**Additional alignment (no formal conformance claim):** **ISO/IEC 62676** (VMS): Functional alignment with 62676-1-1 (system requirements) and 62676-4 (application guidelines) where applicable; conformance testing is out of scope. **SWGDE 18-F-002** (digital evidence collection): incident_bundle includes collection_checklist (operator, purpose, cameras, retention_policy_days). **OSAC 2024-N-0011** (image taxonomy): RUNBOOKS § Evidence and export; recording manifest `image_type: 'primary'`; incident_bundle `image_type: 'working'`; fixity job aligned with OSAC fixity.

@@ -74,7 +74,7 @@ The app’s **gait_notes** currently use a single-frame posture + symmetry heuri
 
 ### Implemented
 
-- **Pose**: MediaPipe in the main pipeline; used for `pose` (Standing / Person down) and fall detection.
+- **Pose**: MediaPipe in the main pipeline; runs on largest person crop first (Phase 2.2). `pose` is derived from landmarks: Standing / Sitting / Walking; Person down overrides when torso horizontal. Fall detection unchanged.
 - **Gait notes**: `_gait_notes_from_pose()` uses MediaPipe landmarks (when available) to set `gait_notes` from:
   - **Posture**: upright vs bent torso.
   - **Symmetry**: rough left/right shoulder and hip balance (can suggest asymmetry/limping in favorable views).

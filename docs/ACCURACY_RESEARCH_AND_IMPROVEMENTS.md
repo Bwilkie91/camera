@@ -40,9 +40,9 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 | **micro_expression** | Same as emotion (stub) | MER model would improve |
 | **attention_region** | `unknown` (stub) | Gaze model would improve |
 | **intoxication_indicator, drug_use_indicator, gait_notes** | Stubs: none / normal | Gait/temporal model needed |
-| **perceived_gender** | DeepFace `gender` on crop (if ENABLE_EXTENDED_ATTRIBUTES) | |
-| **perceived_age_range** | DeepFace `age` → bands 0–17, 18–29, 30–44, 45–59, 60+ | |
-| **perceived_ethnicity** | DeepFace `race` (only if ENABLE_SENSITIVE_ATTRIBUTES=1) | Policy-sensitive |
+| **perceived_gender** | DeepFace `gender` on crop (if ENABLE_EXTENDED_ATTRIBUTES) | Not NIST FRVT-validated; may show demographic differentials (NISTIR 8429). See §Demographic fairness below. |
+| **perceived_age_range** | DeepFace `age` → bands 0–17, 18–29, 30–44, 45–59, 60+ | Same as gender; 224×224 crop applied (PLAN_90_PLUS). |
+| **perceived_ethnicity** | DeepFace `race` (only if ENABLE_SENSITIVE_ATTRIBUTES=1) | Policy-sensitive; document demographic reporting if used. |
 
 ### 1.3 Audio attributes — `_extract_audio_attributes`
 
@@ -99,7 +99,7 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 
 **Improvements:**
 1. **Preprocess crop**: Before DeepFace/EmotiEffLib, run CLAHE or gamma on the face/person crop when mean intensity is low or variance is high (configurable).
-2. **Minimum crop size**: Skip emotion or use “Unknown” when person crop &lt; 30×30 (already partially done); consider 48×48 minimum for DeepFace.
+2. **Minimum crop size**: Skip emotion or use “Unknown” when person crop &lt; 30×30 (already partially done); consider 48×48 minimum for DeepFace. **Implemented:** `EMOTION_MIN_CROP_SIZE` (default 48) in app.py (BEST_PATH_FORWARD Phase 2.1).
 3. **Resolution for DeepFace**: Feed at least 224×224 for age/gender; emotion models also benefit from consistent input size (document in EXTENDED_ATTRIBUTES).
 
 ---
@@ -188,8 +188,14 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 
 **Improvements:**
 1. **Resize crop for DeepFace**: Ensure person/face crop is at least 224×224 (upscale if needed) before DeepFace.analyze(..., actions=['age','gender']).
-2. **Height calibration**: Env or config `HEIGHT_REF_CM` and `HEIGHT_REF_PX` per camera for estimated_height_cm formula.
+2. **Height calibration**: Env or config `HEIGHT_REF_CM` and `HEIGHT_REF_PX` per camera for estimated_height_cm formula. **Implemented:** `HEIGHT_REF_CM` and `HEIGHT_REF_PX` in .env (see .env.example); app.py uses them when set (BEST_PATH_FORWARD Phase 2.4, STANDARDS_APPLIED).
 3. **Document**: Add to EXTENDED_ATTRIBUTES.md the 224×224 recommendation and calibration.
+
+---
+
+### Demographic fairness (perceived_gender, perceived_age_range)
+
+**perceived_gender** and **perceived_age_range** are produced by DeepFace and are **not NIST FRVT-validated**. They may exhibit **demographic differentials** (e.g. higher error rates for some skin tones or age bands — see NISTIR 8429, Gender Shades). For high-stakes identification, use an FRVT-validated engine or conduct an internal demographic audit. The app returns **face_attributes_note** in `GET /api/v1/what_we_collect` when extended attributes are on, directing operators to NISTIR 8429. See **DATA_POINT_ACCURACY_RATING.md** and **RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md** §4.
 
 ---
 
@@ -230,17 +236,17 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 
 ## 3. Summary: high-impact, feasible improvements
 
-| Priority | Area | Change | Effort |
+| Priority | Area | Change | Status |
 |----------|------|--------|--------|
-| High | YOLO | Add `YOLO_CONF` (e.g. 0.25); filter objects and crowd_count by conf | Low |
-| High | LPR | Preprocess ROI (grayscale, CLAHE, adaptive thresh, morph); upscale small ROI | Low |
-| Medium | Emotion | Preprocess crop (CLAHE/gamma when dark); min size 48×48; 224×224 for DeepFace age/gender | Medium |
-| Medium | Motion | Optional MOG2/KNN + morphology + contour filter | Medium |
-| Medium | Loiter/line | Centroid smoothing; debounce line cross | Medium |
-| Low | Scene | Mean + variance or lower-half mean | Low |
-| Low | Pose | Run MediaPipe on person crop | Low |
-| Low | Audio | Prefer better ASR; fuse energy with text for stress | Config / integration |
-| Doc | All | Document resolution, calibration, and env vars in YOLO_INTEGRATION, EXTENDED_ATTRIBUTES, ACCURACY_RESEARCH | Low |
+| High | YOLO | YOLO_CONF and per-class filter; filter objects and crowd_count by conf | **Applied** |
+| High | LPR | Preprocess ROI (grayscale, CLAHE, morph); upscale when ROI &lt; 80×24 px | **Applied** |
+| Medium | Emotion | CLAHE when dark (EMOTION_CLAHE_THRESHOLD); min 48×48; 224×224 for age/gender | **Applied** |
+| Medium | Motion | MOG2 + morphology (MOTION_BACKEND, MOTION_MOG2_VAR_THRESHOLD) | **Applied** |
+| Medium | Loiter/line | Centroid smoothing (CENTROID_SMOOTHING_FRAMES); debounce line cross | **Applied** |
+| Low | Scene | Lower-half mean + variance (SCENE_VAR_MAX_INDOOR) | **Applied** |
+| Low | Pose | MediaPipe on person crop; Standing/Sitting/Walking from landmarks | **Applied** |
+| Low | Audio | Fuse energy with text for stress; better ASR remains config | **Applied** (fusion) |
+| Doc | All | Document in EXTENDED_ATTRIBUTES, DATA_COLLECTION_RESEARCH, STANDARDS_APPLIED | **Applied** |
 
 ---
 
@@ -255,3 +261,5 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 - Speech emotion: ASR WER impact, multimodal fusion (arXiv); production sentiment (Deepgram).
 
 Implementing the high-priority items (YOLO conf, LPR preprocessing) and documenting the rest in this file and in YOLO_INTEGRATION.md / EXTENDED_ATTRIBUTES.md will give the largest accuracy gains with minimal risk.
+
+**See also:** [DATA_POINT_ACCURACY_RATING.md](DATA_POINT_ACCURACY_RATING.md) — each data point rated 1–100 with best-in-class improvements from military, law enforcement, and academic sources.

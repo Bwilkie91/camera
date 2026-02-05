@@ -57,7 +57,21 @@ These are **high-value, ethical, and align with enterprise and government standa
 | **Temporary guest / contractor access** | Time-limited accounts or PIN for viewing (e.g. 24–72 hours) with no export; auto-expire. | Minimize standing access. |
 | **Export approval workflow (optional)** | For high-sensitivity deployments: export requires second role (e.g. admin approval) and is logged. | CJIS-style, enterprise. |
 
-### 2.5 Operational & security hardening
+### 2.5 Deployment checklist (purpose, necessity, less intrusive options)
+
+When deploying or expanding surveillance (e.g. adding cameras, enabling biometric or LPR):
+
+| Step | Action | Reference |
+|------|--------|-----------|
+| **Purpose** | Document why you run surveillance (security, safety, etc.) and retain that with your config. | LEGAL_AND_ETHICS § Best practices. |
+| **Necessity** | Collect only what is necessary; use minimal or privacy presets where possible. | §2.2 Privacy / minimal preset. |
+| **Less intrusive options** | Consider whether less intrusive measures (e.g. motion-only, no face/emotion/LPR) would suffice. | GDPR/EDPB proportionality. |
+| **DPIA** | When biometric (face/emotion) or LPR is on, complete a DPIA and document lawful basis. | LEGAL_AND_ETHICS § DPIA and lawful basis; GET /api/v1/what_we_collect (dpia_recommended). |
+| **Redaction** | For SAR or third-party sharing, use an external redaction tool on exported video. | LEGAL_AND_ETHICS § Video redaction. |
+
+See **docs/LEGAL_AND_ETHICS.md** and **docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md** §3.
+
+### 2.6 Operational & security hardening
 
 | Feature | Description | Reference / standard |
 |---------|-------------|----------------------|
@@ -65,7 +79,7 @@ These are **high-value, ethical, and align with enterprise and government standa
 | **Dependency / CVE scanning** | `pip-audit` or `safety` in CI; schedule updates; document in INSTALL_AUDIT. | Vulnerability management (SURVEILLANCE_COMMAND_COMPETITORS_AND_RATING.md). |
 | **Saved searches + audit** | Save filter presets (e.g. “Front door, last 7 days”); log search/saved-search use in audit log. | NIST AU-9, SOC best practice. |
 
-### 2.6 Civilian-specific UX & compliance
+### 2.7 Civilian-specific UX & compliance
 
 | Feature | Description | Reference / standard |
 |---------|-------------|----------------------|
@@ -127,3 +141,5 @@ These are **high-value, ethical, and align with enterprise and government standa
 | Export requires approval | Env `EXPORT_REQUIRES_APPROVAL=1` |
 | Home / away mode | Config `home_away_mode`; system_status |
 | Export data date range | `/export_data?date_from=&date_to=` |
+
+**See also:** [RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md](RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md) — DPIA triggers, lawful basis, video redaction for SAR/third-party sharing, and “less intrusive alternatives” checklist from civilian/LE sources.

@@ -41,6 +41,9 @@ Focused audit of **performance, resource use, and scalability** for the Vigil ba
 4. **DeepFace / MediaPipe**  
    Both are optional. If enabled, consider running them on a downscaled crop (e.g. face/person ROI) or every N-th analysis cycle to limit cost.
 
+5. **Applied: CLAHE cache**  
+   Low-light emotion preprocessing reuses a single `cv2.createCLAHE` instance (module-level `_clahe_emotion`) instead of creating one per frame.
+
 ---
 
 ## 2. Database
