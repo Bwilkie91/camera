@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jetson Surveillance Dashboard with Export</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0f0f0f;
+      color: #eee;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    header {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #00b3ff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjusted for mobile */
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: #1c1c1c;
+      border-radius: 10px;
+      padding: 1rem;
+      box-shadow: 0 0 15px #007bb8aa;
+    }
+    video {
+      width: 100%;
+      height: 200px;
+      border-radius: 8px;
+      background: #000;
+      object-fit: cover;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    ul li {
+      padding: 0.3rem 0;
+      border-bottom: 1px dashed #333;
+    }
+    #aiLogContainer, #extendedLogContainer {
+      max-height: 220px;
+      overflow-y: auto;
+      background: #222;
+      padding: 0.5rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    .log-entry {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #333;
+    }
+    button.btn {
+      margin-top: 0.8rem;
+      background: #00b3ff;
+      border: none;
+      color: #000;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button.btn:hover {
+      background: #009ad1;
+      color: #fff;
+    }
+    button.btn:focus {
+      outline: 2px solid #00b3ff; /* Added for accessibility */
+      outline-offset: 2px;
+    }
+    #filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      max-width: 960px;
+      margin: 0 auto 1rem;
+    }
+    #filters label {
+      user-select: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #filters input[type=checkbox] {
+      margin-right: 0.4rem;
+      transform: scale(1.2);
+      vertical-align: middle;
+      cursor: pointer;
+    }
+    #logContainer {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      background: #222;
+      border-radius: 8px;
+      padding: 1rem;
+      height: 460px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #00b3ff;
+      margin-bottom: 0.5rem;
+    }
+    .audio-toggle {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .audio-toggle label {
+      cursor: pointer;
+    }
+    .alert-section button {
+      margin-top: 10px;
+    }
+    .camera-controls {
+      margin-top: 1rem;
+    }
+    .sensor-list {
+      font-size: 0.9rem;
+    }
+    .snapshots {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .snapshots img {
+      width: 80px;
+      height: 45px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 2px solid #00b3ff;
+    }
+    .video-downloads {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .video-downloads a {
+      display: block;
+      color: #00b3ff;
+      text-decoration: none;
+      margin: 3px 0;
+    }
+    .video-downloads a:hover {
+      text-decoration: underline;
+    }
+    #logSearch {
+      padding: 0.5rem;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 4px;
+      border: 1px solid #00b3ff;
+    }
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr; /* Single column on small screens */
+      }
+      video {
+        height: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>🛰️ Jetson AGX Orin Surveillance Dashboard & Export Features</header>
+
+<div class="grid">
+  <!-- Camera cards -->
+  <div class="card" data-cam="0" role="region" aria-label="Thermal Feed Camera">
+    <h3>Thermal Feed (FLIR FX34)</h3>
+    <video id="cam0" autoplay loop muted playsinline loading="lazy" aria-label="Thermal camera feed">
+      <source src="https://media.w3.org/2010/05/sintel/trailer.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+    <div class="audio-toggle">
+      <label><input type="checkbox" data-cam="0" class="audioSwitch" aria-label="Toggle audio for thermal camera" /> Audio On/Off</label>
+    </div>
+    <button class="btn" onclick="takeSnapshot(0)">📸 Take Snapshot</button>
+    <div class="snapshots" id="snapshots0" aria-label="Snapshots for thermal camera"></div>
+    <button class="btn" onclick="exportAllDataForCamera(0)">📤 Export All Data + Snapshots for FLIR FX34</button>
+    <div class="video-downloads" id="videoDownloads0">
+      <strong>Download Videos:</strong>
+      <a href="videos/flir_1.mp4" download>flir_1.mp4</a>
+      <a href="videos/flir_2.mp4" download>flir_2.mp4</a>
+    </div>
+  </div>
+  <div class="card" data-cam="1" role="region" aria-label="PTZ Dome Camera">
+    <h3>PTZ Dome (Axis 4K)</h3>
+    <video id="cam1" autoplay loop muted playsinline loading="lazy" aria-label="PTZ dome camera feed">
+      <source src="https://www.w3schools.com/html/movie.mp4" type="video/mp4" />
+    </video>
+    <div class="audio-toggle">
+      <label><input type="checkbox" data-cam="1" class="audioSwitch" aria-label="Toggle audio for PTZ dome camera" /> Audio On/Off</label>
+    </div>
+    <button class="btn" onclick="takeSnapshot(1)">📸 Take Snapshot</button>
+    <div class="snapshots" id="snapshots1" aria-label="Snapshots for PTZ dome camera"></div>
+    <button class="btn" onclick="exportAllDataForCamera(1)">📤 Export All Data + Snapshots for Axis PTZ Dome 4K</button>
+    <div class="video-downloads" id="videoDownloads1">
+      <strong>Download Videos:</strong>
+      <a href="videos/axis_1.mp4" download>axis_1.mp4</a>
+      <a href="videos/axis_2.mp4" download>axis_2.mp4</a>
+    </div>
+  </div>
+  <div class="card" data-cam="2" role="region" aria-label="Low-Light Camera">
+    <h3>Low-Light Sony Alpha 7S III</h3>
+    <video id="cam2" autoplay loop muted playsinline loading="lazy" aria-label="Low-light camera feed">
+      <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+    </video>
+    <div class="audio-toggle">
+      <label><input type="checkbox" data-cam="2" class="audioSwitch" aria-label="Toggle audio for low-light camera" /> Audio On/Off</label>
+    </div>
+    <button class="btn" onclick="takeSnapshot(2)">📸 Take Snapshot</button>
+    <div class="snapshots" id="snapshots2" aria-label="Snapshots for low-light camera"></div>
+    <button class="btn" onclick="exportAllDataForCamera(2)">📤 Export All Data + Snapshots for Sony Alpha 7S III</button>
+    <div class="video-downloads" id="videoDownloads2">
+      <strong>Download Videos:</strong>
+      <a href="videos/sony_1.mp4" download>sony_1.mp4</a>
+      <a href="videos/sony_2.mp4" download>sony_2.mp4</a>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card" role="region" aria-label="System Status">
+    <h3>System Status & Network Health</h3>
+    <ul class="sensor-list">
+      <li><strong>Battery:</strong> 13.6V (92%)</li>
+      <li><strong>Solar Input:</strong> 310W</li>
+      <li><strong>NVMe Storage:</strong> 9.2TB Free</li>
+      <li><strong>LTE Signal:</strong> -70 dBm</li>
+      <li><strong>Camera Connectivity:</strong>
+        <ul>
+          <li>FLIR FX34: Online</li>
+          <li>Axis PTZ Dome: Online</li>
+          <li>Sony Alpha 7S III: Online</li>
+        </ul>
+      </li>
+      <li><strong>Firmware Version:</strong> 3.1.4 (Latest)</li>
+      <li><strong>Uptime:</strong> 5 days, 4 hrs</li>
+      <li><strong>Power Outage:</strong> None detected</li>
+    </ul>
+  </div>
+  <div class="card" role="region" aria-label="AI Detection Log">
+    <h3>AI Detection Log</h3>
+    <div id="aiLogContainer" aria-live="polite" aria-label="AI detection log">
+      <div class="log-entry">[07:02:18] 🚨 Person Detected – East Gate (FLIR)</div>
+      <div class="log-entry">[06:47:12] 🕵️ Suspicious Vehicle – Black SUV (Plate: Q9X-456)</div>
+      <div class="log-entry">[06:12:30] 🐾 Animal Detected – Bobcat, South Field</div>
+      <div class="log-entry">[05:39:55] 🔒 Intrusion Alert – West Fence Breach</div>
+      <div class="log-entry">[04:55:22] 🎯 Unknown Movement Pattern – Prolonged Loitering</div>
+    </div>
+    <button class="btn" onclick="exportAILogs()">📤 Export AI Detection Log (.txt)</button>
+  </div>
+  <div class="card alert-section" role="region" aria-label="Alert Controls">
+    <h3>Alert Controls</h3>
+    <button class="btn" onclick="sendSmsAlert()">📲 Send SMS Alert Now</button>
+    <button class="btn" onclick="exportExtendedLogs()">📤 Export Extended Logs</button>
+  </div>
+</div>
+
+<div role="region" aria-label="Weekly Surveillance Logs">
+  <h2>Filter Weekly Surveillance Logs</h2>
+  <div style="text-align: center; margin-bottom: 1rem;">
+    <input type="text" id="logSearch" placeholder="Search logs..." aria-label="Search surveillance logs">
+  </div>
+  <div id="filters"></div>
+  <pre id="logContainer" aria-label="Filtered weekly logs"></pre>
+  <button class="btn" id="exportBtn">📤 Export Filtered Logs</button>
+</div>
+
+<div role="region" aria-label="Extended Security Logs">
+  <h2>Extended Security Logs</h2>
+  <div id="extendedLogContainer" aria-live="polite" aria-label="Extended security logs"></div>
+</div>
+
+<!-- JSZip for zip file creation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+  // Centralized configuration
+  const config = {
+    cameras: [
+      { id: 0, name: 'FLIR FX34 Thermal', videoId: 'cam0', videoUrls: ['videos/flir_1.mp4', 'videos/flir_2.mp4'] },
+      { id: 1, name: 'Axis PTZ Dome 4K', videoId: 'cam1', videoUrls: ['videos/axis_1.mp4', 'videos/axis_2.mp4'] },
+      { id: 2, name: 'Sony Alpha 7S III', videoId: 'cam2', videoUrls: ['videos/sony_1.mp4', 'videos/sony_2.mp4'] }
+    ],
+    surveillanceCategories: [
+      { icon: '🤖', name: 'Emotional / Behavioral', id: 'emotional' },
+      { icon: '🚗', name: 'Vehicle & Parking', id: 'vehicle' },
+      { icon: '🔒', name: 'Security/Access Control Logs', id: 'security' },
+      { icon: '👥', name: 'Social Interactions', id: 'social' },
+      { icon: '⚠️', name: 'Risky/Unusual Behavior', id: 'risky' },
+      { icon: '🔊', name: 'Audio & Acoustic', id: 'audio' },
+      { icon: '⏰', name: 'Time-based Alerts', id: 'time' },
+    ],
+    maxSnapshots: 10,
+    maxLogs: 50
+  };
+
+  // Store snapshots for each camera
+  const snapshotsStore = {
+    0: [],
+    1: [],
+    2: []
+  };
+
+  // Simulated CSRF token (replace with server-side implementation)
+  const csrfToken = 'simulated-csrf-token-' + Math.random().toString(36).substr(2);
+
+  // Sanitize text to prevent XSS
+  function sanitizeText(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Validate video file paths
+  function isValidVideoPath(path) {
+    const safePattern = /^[a-zA-Z0-9_\/-]+\.(mp4|webm)$/;
+    return safePattern.test(path);
+  }
+
+  // Debounce function
+  function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  // Audio toggle per camera
+  document.querySelectorAll('.audioSwitch').forEach(input => {
+    input.checked = false;
+    input.addEventListener('change', (e) => {
+      const camIndex = e.target.dataset.cam;
+      const video = document.getElementById(`cam${camIndex}`);
+      video.muted = !e.target.checked;
+    });
+  });
+
+  // Validate video download links
+  document.querySelectorAll('.video-downloads a').forEach(link => {
+    if (!isValidVideoPath(link.getAttribute('href'))) {
+      link.style.display = 'none';
+      console.warn(`Invalid video path detected: ${link.getAttribute('href')}`);
+    }
+  });
+
+  // Take snapshot with error handling
+  function takeSnapshot(camIndex) {
+    try {
+      const video = document.getElementById(`cam${camIndex}`);
+      if (video.readyState < 2) {
+        throw new Error('Video not ready for snapshot.');
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 320;
+      canvas.height = video.videoHeight || 180;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Canvas context not supported.');
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        if (!blob) {
+          throw new Error('Failed to create snapshot blob.');
+        }
+        if (snapshotsStore[camIndex].length >= config.maxSnapshots) {
+          snapshotsStore[camIndex].shift();
+        }
+        snapshotsStore[camIndex].push(blob);
+        displaySnapshots(camIndex);
+        addExtendedLog(`Snapshot taken for ${config.cameras[camIndex].name}.`);
+      }, 'image/png');
+    } catch (error) {
+      console.error('Snapshot error:', error.message);
+      alert(`Error taking snapshot: ${error.message}`);
+      addExtendedLog(`Failed to take snapshot for ${config.cameras[camIndex].name}: ${error.message}`);
+    }
+  }
+
+  function displaySnapshots(camIndex) {
+    const container = document.getElementById(`snapshots${camIndex}`);
+    container.innerHTML = '';
+    snapshotsStore[camIndex].forEach((blob, idx) => {
+      const url = URL.createObjectURL(blob);
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = `Snapshot ${idx + 1} for camera ${config.cameras[camIndex].name}`;
+      container.appendChild(img);
+    });
+  }
+
+  // Sample weekly logs
+  const logs = [
+    { date: '2025-06-01', timestamp: '06:00', category: 'emotional', issue: 'Nervous pacing near front gate', camera: 'FLIR FX34 Thermal', location: 'Front Yard' },
+    { date: '2025-06-01', timestamp: '06:47', category: 'vehicle', issue: 'Black SUV parked suspiciously', camera: 'Axis PTZ Dome 4K', location: 'Garage' },
+    { date: '2025-06-01', timestamp: '07:02', category: 'security', issue: 'Unauthorized person detected', camera: 'FLIR FX34 Thermal', location: 'Front Yard' },
+    { date: '2025-06-01', timestamp: '08:20', category: 'security', issue: 'Front door unlocked by user ID #123', camera: 'Sony Alpha 7S III', location: 'Driveway' },
+    { date: '2025-06-01', timestamp: '09:15', category: 'social', issue: 'Group loitering at driveway', camera: 'Sony Alpha 7S III', location: 'Driveway' },
+    { date: '2025-06-01', timestamp: '10:30', category: 'risky', issue: 'Person attempting to access garage window', camera: 'Axis PTZ Dome 4K', location: 'Garage' },
+    { date: '2025-06-01', timestamp: '11:45', category: 'audio', issue: 'Glass breaking sound detected', camera: 'FLIR FX34 Thermal', location: 'Front Yard' },
+    { date: '2025-06-01', timestamp: '12:00', category: 'time', issue: 'Unusual movement at 3 AM', camera: 'Sony Alpha 7S III', location: 'Driveway' },
+  ];
+
+  // Extended logs
+  const extendedLogs = [
+    { category: 'environment', timestamp: '2025-06-01 08:15', description: 'Motion detected near backyard fence' },
+    { category: 'access', timestamp: '2025-06-01 08:20', description: 'Front door unlocked by user ID #123' },
+    { category: 'network', timestamp: '2025-06-01 09:00', description: 'Sony Alpha 7S III camera offline - reconnecting' },
+    { category: 'environment', timestamp: '2025-06-01 10:20', description: 'Smoke detected in garage area' },
+    { category: 'audio', timestamp: '2025-06-01 11:30', description: 'Glass break detected in living room' },
+    { category: 'power', timestamp: '2025-06-01 11:45', description: 'Power outage detected, backup battery active' },
+    { category: 'security', timestamp: '2025-06-01 12:00', description: 'Fence tampering detected at west perimeter' },
+    { category: 'access', timestamp: '2025-06-01 12:15', description: 'Failed access attempt at front door (invalid code)' },
+  ];
+
+  // Create filters UI
+  const filtersDiv = document.getElementById('filters');
+  config.surveillanceCategories.forEach(cat => {
+    const label = document.createElement('label');
+    label.htmlFor = cat.id;
+    label.innerHTML = `<input type="checkbox" id="${cat.id}" checked aria-label="${cat.name} filter" /> ${cat.icon} ${sanitizeText(cat.name)}`;
+    filtersDiv.appendChild(label);
+  });
+
+  // Render weekly logs
+  const logContainer = document.getElementById('logContainer');
+  function renderLogs() {
+    const selectedCats = config.surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
+    const searchTerm = document.getElementById('logSearch').value.toLowerCase();
+    const filtered = logs.filter(log => 
+      selectedCats.includes(log.category) &&
+      (log.issue.toLowerCase().includes(searchTerm) || 
+       log.camera.toLowerCase().includes(searchTerm) || 
+       log.location.toLowerCase().includes(searchTerm))
+    );
+    filtered.sort((a, b) => (a.date + a.timestamp).localeCompare(b.date + b.timestamp));
+    logContainer.textContent = filtered.map(l => `[${l.date} ${l.timestamp}] ${sanitizeText(l.issue)} — ${sanitizeText(l.camera)} (${sanitizeText(l.location)})`).join('\n');
+  }
+
+  // Debounced renderLogs
+  const debouncedRenderLogs = debounce(renderLogs, 300);
+  config.surveillanceCategories.forEach(cat => {
+    document.getElementById(cat.id).addEventListener('change', debouncedRenderLogs);
+  });
+  document.getElementById('logSearch').addEventListener('input', debouncedRenderLogs);
+
+  renderLogs();
+
+  // Export filtered weekly logs
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    if (!csrfToken) {
+      alert('Security error: CSRF token missing.');
+      return;
+    }
+    const selectedCats = config.surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
+    const searchTerm = document.getElementById('logSearch').value.toLowerCase();
+    const filtered = logs.filter(log => 
+      selectedCats.includes(log.category) &&
+      (log.issue.toLowerCase().includes(searchTerm) || 
+       log.camera.toLowerCase().includes(searchTerm) || 
+       log.location.toLowerCase().includes(searchTerm))
+    );
+    let text = filtered.map(l => `[${l.date} ${l.timestamp}] ${sanitizeText(l.issue)} — ${sanitizeText(l.camera)} (${sanitizeText(l.location)})`).join('\n');
+    const blob = new Blob([text], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'surveillance_behavior_log.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    addExtendedLog('Filtered logs exported.');
+  });
+
+  // Render extended logs
+  const extendedLogContainer = document.getElementById('extendedLogContainer');
+  function renderExtendedLogs() {
+    extendedLogContainer.innerHTML = '';
+    extendedLogs.forEach(log => {
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.textContent = `[${log.timestamp}] [${log.category.toUpperCase()}] ${sanitizeText(log.description)}`;
+      extendedLogContainer.appendChild(div);
+    });
+  }
+
+  function addExtendedLog(text) {
+    const timestamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    extendedLogs.unshift({ category: 'system', timestamp, description: text });
+    if (extendedLogs.length > config.maxLogs) extendedLogs.pop();
+    renderExtendedLogs();
+  }
+
+  renderExtendedLogs();
+
+  // Simulate real-time AI log updates
+  function simulateRealTimeLog() {
+    const newLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      message: `🚨 Simulated event detected – ${config.cameras[Math.floor(Math.random() * config.cameras.length)].name}`
+    };
+    const aiLogEl = document.getElementById('aiLogContainer');
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = `[${newLog.timestamp}] ${sanitizeText(newLog.message)}`;
+    aiLogEl.insertBefore(div, aiLogEl.firstChild);
+    if (aiLogEl.children.length > config.maxLogs) {
+      aiLogEl.removeChild(aiLogEl.lastChild);
+    }
+  }
+  setInterval(simulateRealTimeLog, 30000);
+
+  // SMS alert simulation
+  function sendSmsAlert() {
+    if (!csrfToken) {
+      alert('Security error: CSRF token missing.');
+      return;
+    }
+    alert('Simulated SMS alert sent to registered user(s).');
+    addExtendedLog('SMS alert sent by user action.');
+  }
+
+  // Export AI logs
+  function exportAILogs() {
+    if (!csrfToken) {
+      alert('Security error: CSRF token missing.');
+      return;
+    }
+    const aiLogEl = document.getElementById('aiLogContainer');
+    const text = Array.from(aiLogEl.children).map(div => sanitizeText(div.textContent)).join('\n');
+    const blob = new Blob([text], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ai_detection_log.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    addExtendedLog('AI logs exported.');
+  }
+
+  // Export extended logs
+  function exportExtendedLogs() {
+    if (!csrfToken) {
+      alert('Security error: CSRF token missing.');
+      return;
+    }
+    let text = extendedLogs.map(l => `[${l.timestamp}] [${l.category.toUpperCase()}] ${sanitizeText(l.description)}`).join('\n');
+    const blob = new Blob([text], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'extended_security_logs.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    addExtendedLog('Extended logs exported.');
+  }
+
+  // Export all data per camera
+  async function exportAllDataForCamera(camIndex) {
+    if (!csrfToken) {
+      alert('Security error: CSRF token missing.');
+      return;
+    }
+    try {
+      const cam = config.cameras[camIndex];
+      const zip = new JSZip();
+
+      // Weekly logs
+      const weeklyLogs = logs.filter(log => log.camera === cam.name);
+      let weeklyText = `--- Weekly Surveillance Logs for ${cam.name} ---\n\n`;
+      if (weeklyLogs.length === 0) {
+        weeklyText += "No weekly logs found for this camera.\n";
+      } else {
+        weeklyLogs.forEach(l => {
+          weeklyText += `[${l.date} ${l.timestamp}] [${l.category.toUpperCase()}] ${sanitizeText(l.issue)} — Location: ${sanitizeText(l.location)}\n`;
+        });
+      }
+      zip.file('weekly_logs.txt', weeklyText);
+
+      // Extended logs
+      const camNameLower = cam.name.toLowerCase();
+      const extLogs = extendedLogs.filter(log => log.description.toLowerCase().includes(camNameLower));
+      let extendedText = `--- Extended Security Logs mentioning ${cam.name} ---\n\n`;
+      if (extLogs.length === 0) {
+        extendedText += "No extended logs mentioning this camera found.\n";
+      } else {
+        extLogs.forEach(l => {
+          extendedText += `[${l.timestamp}] [${l.category.toUpperCase()}] ${sanitizeText(l.description)}\n`;
+        });
+      }
+      zip.file('extended_logs.txt', extendedText);
+
+      // Snapshots
+      if (snapshotsStore[camIndex].length === 0) {
+        zip.file('snapshots.txt', 'No snapshots taken for this camera.');
+      } else {
+        const folder = zip.folder('snapshots');
+        for (let i = 0; i < snapshotsStore[camIndex].length; i++) {
+          const blob = snapshotsStore[camIndex][i];
+          const arrayBuffer = await blob.arrayBuffer();
+          folder.file(`snapshot_${i + 1}.png`, arrayBuffer);
+        }
+      }
+
+      // Video files
+      const videoFolder = zip.folder('videos');
+      const videoFiles = config.cameras[camIndex].videoUrls;
+      for (const url of videoFiles) {
+        if (isValidVideoPath(url)) {
+          videoFolder.file(url.split('/').pop() + '.txt', `Simulated video file link: ${url}`);
+        }
+      }
+
+      zip.generateAsync({type: 'blob'}).then(function(content) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = `${cam.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        addExtendedLog(`Exported all data for ${cam.name}.`);
+      });
+    } catch (error) {
+      console.error('Export error:', error.message);
+      alert(`Error exporting data: ${error.message}`);
+      addExtendedLog(`Failed to export data for ${config.cameras[camIndex].name}: ${error.message}`);
+    }
+  }
+</script>
+</body>
+</html>

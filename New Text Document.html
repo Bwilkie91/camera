@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jetson Surveillance Dashboard & Weekly Behavior Log</title>
+<style>
+  body {
+    margin: 0; padding: 20px;
+    background: #0f0f0f; color: #eee;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+  header {
+    text-align: center; font-size: 2rem; font-weight: 700;
+    margin-bottom: 1rem; color: #00b3ff;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(320px,1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+  .card {
+    background: #1c1c1c;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 0 15px #007bb8aa;
+  }
+  video {
+    width: 100%;
+    height: 200px;
+    border-radius: 8px;
+    background: #000;
+    object-fit: cover;
+  }
+  ul {
+    list-style: none; padding: 0;
+  }
+  ul li {
+    padding: 0.3rem 0;
+    border-bottom: 1px dashed #333;
+  }
+  #aiLogContainer {
+    max-height: 220px;
+    overflow-y: auto;
+    background: #222;
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+  .log-entry {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid #333;
+  }
+  button.btn {
+    margin-top: 0.8rem;
+    background: #00b3ff;
+    border: none;
+    color: #000;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+  }
+  button.btn:hover {
+    background: #009ad1;
+    color: #fff;
+  }
+  #filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    max-width: 960px;
+    margin: 0 auto 1rem;
+  }
+  #filters label {
+    user-select: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #filters input[type=checkbox] {
+    margin-right: 0.4rem;
+    transform: scale(1.2);
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  #logContainer {
+    max-width: 960px;
+    margin: 0 auto 2rem;
+    background: #222;
+    border-radius: 8px;
+    padding: 1rem;
+    height: 460px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+  h1 {
+    text-align: center;
+    color: #00b3ff;
+    margin-bottom: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<header>🛰️ Jetson AGX Orin Surveillance Dashboard</header>
+
+<div class="grid">
+  <div class="card">
+    <h3>Thermal Feed (FLIR FX34)</h3>
+    <video autoplay loop muted playsinline>
+      <source src="https://media.w3.org/2010/05/sintel/trailer.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  </div>
+  <div class="card">
+    <h3>PTZ Dome (Axis 4K)</h3>
+    <video autoplay loop muted playsinline>
+      <source src="https://www.w3schools.com/html/movie.mp4" type="video/mp4" />
+    </video>
+  </div>
+  <div class="card">
+    <h3>Low-Light Sony Alpha 7S III</h3>
+    <video autoplay loop muted playsinline>
+      <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+    </video>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>System Status</h3>
+    <ul>
+      <li><strong>Battery:</strong> 13.6V (92%)</li>
+      <li><strong>Solar Input:</strong> 310W</li>
+      <li><strong>NVMe Storage:</strong> 9.2TB Free</li>
+      <li><strong>LTE Signal:</strong> -70 dBm</li>
+      <li><strong>Uptime:</strong> 5 days, 4 hrs</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>AI Detection Log</h3>
+    <div id="aiLogContainer" aria-live="polite" aria-label="AI detection log">
+      <div class="log-entry">[07:02:18] 🚨 Person Detected – East Gate (FLIR)</div>
+      <div class="log-entry">[06:47:12] 🕵️ Suspicious Vehicle – Black SUV (Plate: Q9X-456)</div>
+      <div class="log-entry">[06:12:30] 🐾 Animal Detected – Bobcat, South Field</div>
+      <div class="log-entry">[05:39:55] 🔒 Intrusion Alert – West Fence Breach</div>
+      <div class="log-entry">[04:55:22] 🎯 Unknown Movement Pattern – Prolonged Loitering</div>
+    </div>
+    <button class="btn" onclick="exportAILogs()">📤 Export AI Detection Log (.txt)</button>
+  </div>
+  <div class="card">
+    <h3>Controls</h3>
+    <button class="btn" onclick="triggerDevice('Siren')">🔊 Activate Siren</button>
+    <button class="btn" onclick="triggerDevice('Floodlights')">💡 Toggle Floodlights</button>
+    <button class="btn" onclick="triggerDevice('Lockdown')">🔒 Activate Lockdown</button>
+  </div>
+</div>
+
+<h1>Weekly Surveillance Behavior Log</h1>
+<div id="filters" role="region" aria-label="Filter log categories"></div>
+<div id="logContainer" aria-live="polite" aria-label="Surveillance behavior logs"></div>
+<div style="max-width: 960px; margin: 0 auto;">
+  <button class="btn" id="exportBtn" aria-label="Export filtered surveillance logs">Export Logs</button>
+</div>
+
+<script>
+  function triggerDevice(device) {
+    alert(device + ' command sent (simulated).');
+  }
+
+  function exportAILogs() {
+    const entries = document.querySelectorAll('#aiLogContainer .log-entry');
+    let text = '';
+    entries.forEach(e => text += e.textContent + '\n');
+    const blob = new Blob([text], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ai_detection_log.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  const surveillanceCategories = [
+    { icon: '🚸', name: 'Emotional & Behavioral Red Flags', id: 'emotional' },
+    { icon: '🚷', name: 'Risky Activities or Suspicious Behavior', id: 'risky' },
+    { icon: '🧍‍♀️🧍‍♂️', name: 'Social Interactions at the Property', id: 'social' },
+    { icon: '🧳', name: 'Physical Object Indicators', id: 'physical' },
+    { icon: '🚘', name: 'Vehicle-Related Surveillance Risks', id: 'vehicle' },
+    { icon: '🌙', name: 'Time- and Pattern-Based Red Flags', id: 'time' },
+    { icon: '🔊', name: 'Audio/Environmental Triggers', id: 'audio' },
+    { icon: '🔒', name: 'Security Breaches or Safety Threats', id: 'security' }
+  ];
+
+  const cameras = [
+    { name: 'FLIR FX34 Thermal', location: 'Front Yard' },
+    { name: 'Axis PTZ Dome 4K', location: 'Garage' },
+    { name: 'Sony Alpha 7S III', location: 'Driveway' },
+    { name: 'Backyard Infrared Cam', location: 'Backyard' },
+    { name: 'Garage Interior Cam', location: 'Garage' },
+    { name: 'Porch Wide-Angle Cam', location: 'Porch' }
+  ];
+
+  const sampleIssues = {
+    emotional: ['Running out of the house crying','Pacing on driveway nervously','Sitting alone quietly','Slamming doors angrily'],
+    risky: ['Scaling fence at night','Using window to enter','Unfamiliar vehicle pickup','Burying objects near porch'],
+    social: ['Unfamiliar male visitor','Hugging/kissing in driveway','Meeting visitors at odd hours','Peers pressuring near garage'],
+    physical: ['Carrying large bag','Leaving with backpack','Returning with suspicious package','Discarding items on lawn'],
+    vehicle: ['Repeated circling vehicle','Unknown car parked long','Multiple cars arriving late','Vehicle revving loudly'],
+    time: ['Frequent visits at midnight','Loitering past curfew','Weekend night gatherings','Unusual daytime absences'],
+    audio: ['Loud shouting','Glass breaking','Car alarms','Dog barking continuously'],
+    security: ['Fence tampering','Door left open','Window broken','Alarm triggered']
+  };
+
+  function randomChoice(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+  function randomDateWithinLastWeek() {
+    const now = new Date();
+    const past = new Date(now.getTime() - 7*24*3600*1000);
+    return new Date(past.getTime() + Math.random()*(now.getTime() - past.getTime()));
+  }
+
+  const logs = [];
+  for(let i=0; i<150; i++) {
+    const cat = randomChoice(surveillanceCategories);
+    const issue = randomChoice(sampleIssues[cat.id]);
+    const cam = randomChoice(cameras);
+    const date = randomDateWithinLastWeek();
+    const dateStr = date.toISOString().slice(0,10);
+    const timeStr = date.toTimeString().slice(0,8);
+    logs.push({
+      category: cat.id,
+      categoryName: `${cat.icon} ${cat.name}`,
+      issue,
+      camera: cam.name,
+      location: cam.location,
+      date: dateStr,
+      timestamp: timeStr,
+      details: `Observed by ${cam.name} at ${cam.location} on ${dateStr} at ${timeStr}.`
+    });
+  }
+
+  const filtersDiv = document.getElementById('filters');
+  surveillanceCategories.forEach(cat => {
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" id="${cat.id}" checked /> ${cat.icon} ${cat.name}`;
+    filtersDiv.appendChild(label);
+  });
+
+  const logContainer = document.getElementById('logContainer');
+
+  function renderLogs() {
+    const selectedCats = surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
+    const filtered = logs.filter(log => selectedCats.includes(log.category))
+      .sort((a,b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+
+    if(filtered.length === 0) {
+      logContainer.textContent = 'No logs for selected categories.';
+      return;
+    }
+
+    logContainer.textContent = filtered.map(log => {
+      return `🗓️ ${log.date} @ ${log.timestamp}\nCategory: ${log.categoryName}\nIssue: ${log.issue}\nCamera: ${log.camera} (${log.location})\nDetails: ${log.details}\n--------------------------------------------`;
+    }).join('\n\n');
+  }
+
+  renderLogs();
+
+  filtersDiv.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', renderLogs);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const selectedCats = surveillanceCategories.filter(cat => document.getElementById(cat.id).checked).map(cat => cat.id);
+    const filteredLogs = logs.filter(log => selectedCats.includes(log.category))
+      .sort((a,b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+    if(filteredLogs.length === 0) {
+      alert('No logs to export for selected categories.');
+      return;
+    }
+    let output = `Weekly Surveillance Behavior Log Export\nGenerated on ${new Date().toLocaleString()}\n\n`;
+    filteredLogs.forEach(log => {
+      output += `Date: ${log.date} @ ${log.timestamp}\nCategory: ${log.categoryName}\nIssue: ${log.issue}\nCamera: ${log.camera}\nLocation: ${log.location}\nDetails: ${log.details}\n--------------------------------------------\n`;
+    });
+
+    const blob = new Blob([output], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `weekly_behavior_log_${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+</script>
+
+</body>
+</html>

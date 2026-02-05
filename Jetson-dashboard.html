@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jetson Surveillance Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      font-family: "Segoe UI", sans-serif;
+    }
+    header {
+      background: #1a1a1a;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      border-bottom: 2px solid #00b3ff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .card {
+      background: #1f1f1f;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 15px;
+    }
+    h3 {
+      margin-top: 0;
+      color: #00b3ff;
+    }
+    video {
+      width: 100%;
+      height: 200px;
+      background: #000;
+      border-radius: 6px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      padding: 6px 0;
+      border-bottom: 1px dashed #333;
+    }
+    .log-entry {
+      background: #292929;
+      margin: 5px 0;
+      padding: 10px;
+      border-left: 4px solid #00b3ff;
+      font-size: 0.9rem;
+    }
+    .btn {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      background: #00b3ff;
+      border: none;
+      color: #000;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #009ad1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>🛰️ Jetson AGX Orin Surveillance Dashboard</header>
+
+  <div class="grid">
+    <!-- Camera Feeds -->
+    <div class="card">
+      <h3>Thermal Feed (FLIR FX34)</h3>
+      <video autoplay loop muted>
+        <source src="https://media.w3.org/2010/05/sintel/trailer.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="card">
+      <h3>PTZ Dome (Axis 4K)</h3>
+      <video autoplay loop muted>
+        <source src="https://www.w3schools.com/html/movie.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="card">
+      <h3>Low-Light Sony Alpha 7S III</h3>
+      <video autoplay loop muted>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- System Status -->
+    <div class="card">
+      <h3>System Status</h3>
+      <ul id="statusList">
+        <li><strong>Battery:</strong> 13.6V (92%)</li>
+        <li><strong>Solar Input:</strong> 310W</li>
+        <li><strong>NVMe Storage:</strong> 9.2TB Free</li>
+        <li><strong>LTE Signal:</strong> -70 dBm</li>
+        <li><strong>Uptime:</strong> 5 days, 4 hrs</li>
+      </ul>
+    </div>
+
+    <!-- AI Event Log -->
+    <div class="card">
+      <h3>AI Detection Log</h3>
+      <div id="logContainer">
+        <div class="log-entry">[07:02:18] 🚨 Person Detected – East Gate (FLIR)</div>
+        <div class="log-entry">[06:47:12] 🕵️ Suspicious Vehicle – Black SUV (Plate: Q9X-456)</div>
+        <div class="log-entry">[06:12:30] 🐾 Animal Detected – Bobcat, South Field</div>
+        <div class="log-entry">[05:39:55] 🔒 Intrusion Alert – West Fence Breach</div>
+        <div class="log-entry">[04:55:22] 🎯 Unknown Movement Pattern – Prolonged Loitering</div>
+      </div>
+      <button class="btn" onclick="exportLogs()">📤 Export Log (.txt)</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <h3>Controls</h3>
+      <button class="btn" onclick="triggerDevice('Siren')">🔊 Activate Siren</button>
+      <button class="btn" onclick="triggerDevice('Floodlights')">💡 Toggle Floodlights</button>
+      <button class="btn" onclick="triggerDevice('Lockdown')">🔒 Activate Lockdown</button>
+    </div>
+  </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Surveillance Behavior Log — Weekly Data</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #121212;
+    color: #eee;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 0.5em;
+  }
+  #filters {
+    max-width: 900px;
+    margin: 0 auto 10px;
+    padding: 10px 15px;
+    background: #222;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  #filters label {
+    cursor: pointer;
+    user-select: none;
+  }
+  #filters input[type="checkbox"] {
+    margin-right: 6px;
+  }
+  #logContainer {
+    background: #1e1e1e;
+    border-radius: 8px;
+    max-width: 900px;
+    margin: 0 auto 20px;
+    padding: 15px;
+    height: 500px;
+    overflow-y: scroll;
+    box-shadow: 0 0 10px #0af;
+    font-size: 0.95em;
+    line-height: 1.3;
+    white-space: pre-wrap;
+  }
+  .log-entry {
+    border-bottom: 1px solid #333;
+    padding: 6px 0;
+  }
+  .log-entry:last-child {
+    border-bottom: none;
+  }
+  .log-header {
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+  .log-details {
+    font-size: 0.85em;
+    color: #bbb;
+    margin-left: 16px;
+  }
+  button {
+    background: #0af;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 25px;
+    font-size: 1em;
+    color: #121212;
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 0 15px #0af88;
+    transition: background 0.3s ease;
+  }
+  button:hover {
+    background: #08c;
+    color: white;
+  }
+</style>
+</head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveillance Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="sidebar">
+            <!-- Sidebar content here -->
+        </div>
+        <div class="main-content">
+            <h1>Surveillance Events</h1>
+            <div class="filters">
+                <!-- Filters for sorting -->
+            </div>
+            <div class="event-list">
+                <!-- Event items will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
+
+<body>
+
+<h1>Advanced Surveillance Behavior Log — One Week</h1>
+
+<div id="filters" aria-label="Filter log categories"></div>
+
+<div id="logContainer" aria-live="polite" aria-label="Surveillance behavior logs"></div>
+
+<button id="exportBtn" aria-label="Export logs to text file">Export Logs</button>
+
+<script>
+  // Categories and details as before, with IDs and icons
+  const surveillanceCategories = [
+    { icon: '🚸', name: 'Emotional & Behavioral Red Flags', id: 'emotional' },
+    { icon: '🚷', name: 'Risky Activities or Suspicious Behavior', id: 'risky' },
+    { icon: '🧍‍♀️🧍‍♂️', name: 'Social Interactions at the Property', id: 'social' },
+    { icon: '🧳', name: 'Physical Object Indicators', id: 'physical' },
+    { icon: '🚘', name: 'Vehicle-Related Surveillance Risks', id: 'vehicle' },
+    { icon: '🌙', name: 'Time- and Pattern-Based Red Flags', id: 'time' },
+    { icon: '🔊', name: 'Audio/Environmental Triggers', id: 'audio' },
+    { icon: '🔒', name: 'Security Breaches or Safety Threats', id: 'security' }
+  ];
+
+  // Sample cameras and locations
+  const cameras = [
+    { name: 'FLIR FX34 Thermal', location: 'Front Yard' },
+    { name: 'Axis PTZ Dome 4K', location: 'Garage' },
+    { name: 'Sony Alpha 7S III', location: 'Driveway' },
+    { name: 'Backyard Infrared Cam', location: 'Backyard' },
+    { name: 'Garage Interior Cam', location: 'Garage' },
+    { name: 'Porch Wide-Angle Cam', location: 'Porch' }
+  ];
+
+  // Sample issues per category for dummy data generation
+  const sampleIssues = {
+    emotional: [
+      'Running out of the house crying',
+      'Pacing on driveway nervously',
+      'Sitting alone quietly',
+      'Slamming doors angrily'
+    ],
+    risky: [
+      'Scaling fence at night',
+      'Using window to enter',
+      'Unfamiliar vehicle pickup',
+      'Burying objects near porch'
+    ],
+    social: [
+      'Unfamiliar male visitor',
+      'Hugging/kissing in driveway',
+      'Meeting visitors at odd hours',
+      'Peers pressuring near garage'
+    ],
+    physical: [
+      'Carrying large bag',
+      'Leaving with backpack',
+      'Returning with dirtied clothes'
+    ],
+    vehicle: [
+      'Entering parked car late night',
+      'Unknown license plate pickup',
+      'Same car repeatedly outside',
+      'Sitting in vehicle long time'
+    ],
+    time: [
+      'Movement detected 10PM–3AM',
+      'Loitering during school hours',
+      'Sudden change in outdoor activity',
+      'New visitors appearing regularly'
+    ],
+    audio: [
+      'Raised voices detected',
+      'Multiple car doors slamming',
+      'Garage door activation late night'
+    ],
+    security: [
+      'Stranger peeking through window',
+      'Camera tampering detected',
+      'Person fleeing in distress',
+      'Suspicious person stalking property'
+    ]
+  };
+
+  // Utility: format date as YYYY-MM-DD
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  // Utility: format time as HH:MM:SS
+  function formatTime(date) {
+    return date.toTimeString().split(' ')[0];
+  }
+
+  // Generate dummy logs for one week
+  function generateOneWeekLogs() {
+    const logs = [];
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+
+    for (let day = 0; day <= 7; day++) {
+      const currentDate = new Date(startDate.getTime() + day * 24 * 60 * 60 * 1000);
+      // Generate 5-10 logs per day
+      const logsCount = 5 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < logsCount; i++) {
+        const category = surveillanceCategories[Math.floor(Math.random() * surveillanceCategories.length)];
+        const issues = sampleIssues[category.id];
+        const issueText = issues[Math.floor(Math.random() * issues.length)];
+
+        // Random time during the day
+        const logTime = new Date(currentDate.getTime());
+        logTime.setHours(Math.floor(Math.random() * 24));
+        logTime.setMinutes(Math.floor(Math.random() * 60));
+        logTime.setSeconds(Math.floor(Math.random() * 60));
+
+        // Random camera for the log
+        const camera = cameras[Math.floor(Math.random() * cameras.length)];
+
+        logs.push({
+          date: formatDate(logTime),
+          time: formatTime(logTime),
+          categoryId: category.id,
+          categoryIcon: category.icon,
+          categoryName: category.name,
+          text: issueText,
+          cameraName: camera.name,
+          location: camera.location
+        });
+      }
+    }
+
+    return logs;
+  }
+
+  // Sorting by date desc, then time desc
+  function sortLogs(logs) {
+    return logs.sort((a, b) => {
+      if (a.date === b.date) {
+        return b.time.localeCompare(a.time);
+      }
+      return b.date.localeCompare(a.date);
+    });
+  }
+
+  // Render logs with filters applied
+  function renderLogs(logs, filterSet) {
+    const container = document.getElementById('logContainer');
+    container.innerHTML = '';
+    logs.forEach(log => {
+      if (filterSet.size === 0 || filterSet.has(log.categoryId)) {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+
+        div.innerHTML = `
+          <div class="log-header">
+            ${log.categoryIcon} [${log.date} ${log.time}] - ${log.categoryName}
+          </div>
+          <div class="log-details">
+            Camera: <strong>${log.cameraName}</strong> | Location: <strong>${log.location}</strong><br />
+            Description: ${log.text}
+          </div>
+        `;
+
+        container.appendChild(div);
+      }
+    });
+  }
+
+  // Export logs currently displayed
+  function exportLogs() {
+    const container = document.getElementById('logContainer');
+    const logsText = Array.from(container.children).map(div => {
+      const header = div.querySelector('.log-header').textContent.trim();
+      const details = div.querySelector('.log-details').textContent.trim();
+      return `${header}\n${details}\n`;
+    }).join('\n');
+
+    const blob = new Blob([logsText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'surveillance_logs_week.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Initialize filters with checkboxes
+  function initFilters() {
+    const filtersDiv = document.getElementById('filters');
+    surveillanceCategories.forEach(cat => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" value="${cat.id}" checked /> ${cat.icon} ${cat.name}`;
+      filtersDiv.appendChild(label);
+    });
+
+    filtersDiv.addEventListener('change', () => {
+      const checkedBoxes = filtersDiv.querySelectorAll('input[type="checkbox"]:checked');
+      const filterSet = new Set(Array.from(checkedBoxes).map(cb => cb.value));
+      renderLogs(allLogs, filterSet);
+    });
+  }
+
+  // Global log array
+  let allLogs = [];
+
+  // Simulated real-time new logs (optional)
+  function startRealTimeUpdates() {
+    setInterval(() => {
+      const now = new Date();
+      const category = surveillanceCategories[Math.floor(Math.random() * surveillanceCategories.length)];
+      const issues = sampleIssues[category.id];
+      const issueText = issues[Math.floor(Math.random() * issues.length)];
+      const camera = cameras[Math.floor(Math.random() * cameras.length)];
+
+      const newLog = {
+        date: formatDate(now),
+        time: formatTime(now),
+        categoryId: category.id,
+        categoryIcon: category.icon,
+        categoryName: category.name,
+        text: issueText,
+        cameraName: camera.name,
+        location: camera.location
+      };
+
+      allLogs.unshift(newLog);
+
+      if (allLogs.length > 200) allLogs.pop();
+
+      // Apply current filter
+      const filtersDiv = document.getElementById('filters');
+      const checkedBoxes = filtersDiv.querySelectorAll('input[type="checkbox"]:checked');
+      const filterSet = new Set(Array.from(checkedBoxes).map(cb => cb.value));
+      renderLogs(allLogs, filterSet);
+    }, 7000); // every 7 seconds
+  }
+
+  // Receive external log for real sensor data integration
+  function receiveExternalLog(text, categoryId, cameraName, location) {
+    const now = new Date();
+
+    const cat = surveillanceCategories.find(c => c.id === categoryId) || surveillanceCategories[0];
+
+    const newLog = {
+      date: formatDate(now),
+      time: formatTime(now),
+      categoryId: cat.id,
+      categoryIcon: cat.icon,
+      categoryName: cat.name,
+      text: text,
+      cameraName: cameraName || 'Unknown Camera',
+      location: location || 'Unknown Location'
+    };
+
+    allLogs.unshift(newLog);
+
+    if (allLogs.length > 200) allLogs.pop();
+
+    const filtersDiv = document.getElementById('filters');
+    const checkedBoxes = filtersDiv.querySelectorAll('input[type="checkbox"]:checked');
+    const filterSet = new Set(Array.from(checkedBoxes).map(cb => cb.value));
+    renderLogs(allLogs, filterSet);
+  }
+
+  // Initialize everything on page load
+  function init() {
+    allLogs = generateOneWeekLogs();
+    allLogs = sortLogs(allLogs);
+
+    initFilters();
+    renderLogs(allLogs, new Set(surveillanceCategories.map(c => c.id)));
+
+    startRealTimeUpdates();
+
+    document.getElementById('exportBtn').addEventListener('click', exportLogs);
+  }
+
+  window.onload = init;
+
+  // Expose receiveExternalLog for external use
+  window.receiveExternalLog
+
+  <script>
+    function triggerDevice(device) {
+      alert(device + ' command sent (simulated).');
+    }
+
+    function exportLogs() {
+      const entries = document.querySelectorAll('.log-entry');
+      let logText = '';
+      entries.forEach(entry => logText += entry.textContent.trim() + '\n');
+
+      const blob = new Blob([logText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.download = 'ai_detection_log.txt';
+      link.click();
+
+      URL.revokeObjectURL(url);
+    }
+  </script>
+
+</body>
+</html>
