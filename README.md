@@ -4,6 +4,13 @@
 
 **Standards rating: [85/100](docs/STANDARDS_RATING.md)** — aligned with NISTIR 8161, SWGDE, CJIS, and NIST AI 100-4 for evidence and operations.
 
+### Recent improvements
+
+- **Standards & data quality**: 90+ data-point plan ([PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md)), applied improvements (224×224 DeepFace, centroid smoothing, CLAHE for low-light emotion, MOG2/scene tuning); FRVT disclaimer and OSAC image_type in exports.
+- **Security & ops**: `ENFORCE_HTTPS=reject` (403 on HTTP when set); legal hold API; deployment checklist and runbooks.
+- **Testing**: Unit tests for integrity hashes and geometry (`tests/`); gait/env script (`scripts/test_gait_and_env.py`); DB cleanup so test runs finish without ResourceWarning.
+- **Performance**: Reused CLAHE instance for emotion preprocessing; config and docs in [OPTIMIZATION_AUDIT.md](docs/OPTIMIZATION_AUDIT.md) and [CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md).
+
 ---
 
 ## Table of Contents
@@ -21,8 +28,10 @@
 - [Suggested equipment (low / medium / high end)](#suggested-equipment-low--medium--high-end)
 - [Project Structure](#project-structure)
 - [Operations](#operations)
+- [Development & testing](#development--testing)
 - [Troubleshooting](#troubleshooting)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -38,6 +47,8 @@ Vigil is a **Flask backend** plus **React frontend** that:
 - **Serves** a React dashboard (Live, Events, Timeline, Map, Analytics, Export, Settings) or legacy HTML; WebSocket for real-time events; optional MFA, RBAC, and audit log.
 
 Data is collected **only when recording is on**; export and retention support compliance and evidence workflows.
+
+**Data flow (high level):** Camera/RTSP → frame ingest → (when recording) YOLO + pose + optional emotion/LPR → motion/loiter/line-cross → SQLite (ai_data, events) + optional recording → React/API/export with chain-of-custody headers.
 
 ---
 
@@ -63,8 +74,9 @@ For **production and evidence-grade** settings, see the *Highest standards* bloc
 
 ## Requirements
 
-- **Python 3.8+**
+- **Python 3.8+** (3.11 or 3.12 recommended; 3.14+ may hit compatibility issues with some deps).
 - **System**: Tesseract (for LPR); camera or RTSP source.
+- **React dashboard**: Modern browser (Chrome, Firefox, Safari, Edge); JavaScript enabled.
 - **Optional**: RPi.GPIO (Pi/Jetson PTZ), PyAudio + SpeechRecognition (audio), Scapy (Wi‑Fi), flirpy (thermal), onvif-zeep (ONVIF PTZ), Redis (multi-instance WebSocket), pyotp (MFA). See [requirements.txt](requirements.txt) and [requirements-optional.txt](requirements-optional.txt).
 
 ---
@@ -400,12 +412,22 @@ Pricing and product names are indicative (audit 2025–2026); verify with vendor
 
 ## Operations
 
-- **Database**: Back up `surveillance.db`; retention job prunes ai_data, events, and recordings by `RETENTION_DAYS`.
-- **Recordings**: Stored in app directory or `RECORDINGS_DIR`; pruned by retention; export via UI or API.
-- **Testing**: From repo root with venv: `python scripts/test_gait_and_env.py` (gait/env); `python -m unittest discover -s tests` or `pytest tests/` (unit tests). Use `--live` for HTTP health checks.
-- **Dependency audit**: Run `./scripts/audit-deps.sh` (or `pip audit`) for CVE checks; recommended for production (BEST_PATH_FORWARD Phase 1). [docs/SYSTEM_RATING.md](docs/SYSTEM_RATING.md).
+- **Database**: Back up `surveillance.db` (e.g. `sqlite3 surveillance.db ".backup backup.db"` or copy the file while the app is idle). Retention job prunes ai_data, events, and recordings by `RETENTION_DAYS`; audit log uses `AUDIT_RETENTION_DAYS` (0 = keep forever).
+- **Recordings**: Stored in app directory or `RECORDINGS_DIR`; pruned by retention; export via UI or API. Back up the recordings directory for evidence; use manifest and checksums from export endpoints.
+- **Monitoring & health**: `GET /health` (liveness), `GET /health/ready` (DB reachable), `GET /api/v1/system_status` (DB, uptime, recording state, cameras, AI status). Use these for load balancers and alerting.
+- **Dependency audit**: Run `./scripts/audit-deps.sh` (or `pip-audit` in venv) for CVE checks; recommended for production (BEST_PATH_FORWARD Phase 1). [docs/SYSTEM_RATING.md](docs/SYSTEM_RATING.md).
 - **Runbooks**: [docs/RUNBOOKS.md](docs/RUNBOOKS.md) — lost camera, export failed, DB locked, WebSocket, NTP, low disk, evidence/OSAC.
 - **Standards applied**: The project follows [docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md) and [docs/STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) for evidence, privacy, and security. Data quality roadmap: [docs/PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md).
+
+---
+
+## Development & testing
+
+- **Environment**: Use a virtual environment (e.g. `python3 -m venv .venv && source .venv/bin/activate`); install with `pip install -r requirements.txt`. Optional deps: [requirements-optional.txt](requirements-optional.txt).
+- **Gait & env**: `python scripts/test_gait_and_env.py` — checks `ENABLE_GAIT_NOTES`, `_gait_notes_from_pose`, and optional `--live` HTTP health/system_status.
+- **Unit tests**: `python -m unittest discover -s tests` or `pytest tests/` (if pytest installed). Covers integrity hashes and geometry (point-in-polygon, segment/line). Run from repo root with venv active.
+- **React dev**: Terminal 1: `./run.sh`. Terminal 2: `cd frontend && npm run dev`. Open http://localhost:5173 (Vite proxies to Flask).
+- **Codebase**: Main backend is `app.py` (Flask, analysis loop, DB, WebSocket); config in `config.json` and env; see [Project Structure](#project-structure) and [docs/](docs/).
 
 ---
 
@@ -425,7 +447,17 @@ More: [docs/RUNBOOKS.md](docs/RUNBOOKS.md).
 
 ---
 
+## Contributing
+
+- **Tests**: Add or extend tests in `tests/`; run `python -m unittest discover -s tests` before pushing. Use `scripts/test_gait_and_env.py --live` when the backend is running for HTTP checks.
+- **Standards**: New features that touch evidence, privacy, or security should align with [STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) and [BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md). Document config in [.env.example](.env.example) and [CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md) where relevant.
+- **Issues & PRs**: Open issues and pull requests on the [GitHub repository](https://github.com/Bwilkie91/camera); for bugs, include Python/env version and steps to reproduce.
+
+---
+
 ## Documentation
+
+The `docs/` folder contains 40+ guides grouped below. Start with [STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) and [STANDARDS_RATING.md](docs/STANDARDS_RATING.md) for the project’s standards posture.
 
 ### Standards & audit
 
