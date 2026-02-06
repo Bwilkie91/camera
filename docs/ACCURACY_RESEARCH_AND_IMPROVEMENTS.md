@@ -40,9 +40,10 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 | **micro_expression** | Same as emotion (stub) | MER model would improve |
 | **attention_region** | `unknown` (stub) | Gaze model would improve |
 | **intoxication_indicator, drug_use_indicator, gait_notes** | Stubs: none / normal | Gait/temporal model needed |
-| **perceived_gender** | DeepFace `gender` on crop (if ENABLE_EXTENDED_ATTRIBUTES) | Not NIST FRVT-validated; may show demographic differentials (NISTIR 8429). See §Demographic fairness below. |
-| **perceived_age_range** | DeepFace `age` → bands 0–17, 18–29, 30–44, 45–59, 60+ | Same as gender; 224×224 crop applied (PLAN_90_PLUS). |
-| **perceived_ethnicity** | DeepFace `race` (only if ENABLE_SENSITIVE_ATTRIBUTES=1) | Policy-sensitive; document demographic reporting if used. |
+| **perceived_gender** | DeepFace `dominant_gender` on crop (if ENABLE_EXTENDED_ATTRIBUTES) | Raw model output. Not NIST FRVT-validated; see §Demographic fairness below. |
+| **perceived_age** | DeepFace `age` (integer) | Raw estimated age in years. |
+| **perceived_age_range** | Same `age` as string | Raw age string (e.g. "34"); no bucketing. |
+| **perceived_ethnicity** | DeepFace `dominant_race` | Raw model output; stored when extended attributes on. |
 
 ### 1.3 Audio attributes — `_extract_audio_attributes`
 
@@ -188,14 +189,15 @@ This document catalogs **every analyzed data point** in the Vigil pipeline and s
 
 **Improvements:**
 1. **Resize crop for DeepFace**: Ensure person/face crop is at least 224×224 (upscale if needed) before DeepFace.analyze(..., actions=['age','gender']).
-2. **Height calibration**: Env or config `HEIGHT_REF_CM` and `HEIGHT_REF_PX` per camera for estimated_height_cm formula. **Implemented:** `HEIGHT_REF_CM` and `HEIGHT_REF_PX` in .env (see .env.example); app.py uses them when set (BEST_PATH_FORWARD Phase 2.4, STANDARDS_APPLIED).
-3. **Document**: Add to EXTENDED_ATTRIBUTES.md the 224×224 recommendation and calibration.
+2. **Height calibration**: Env or config `HEIGHT_REF_CM` and `HEIGHT_REF_PX` per camera for estimated_height_cm formula. **Implemented:** `HEIGHT_REF_CM` and `HEIGHT_REF_PX` in .env (see .env.example); app.py uses them when set (BEST_PATH_FORWARD Phase 2.4, STANDARDS_APPLIED). **HEIGHT_MIN_PX** (default 60): only compute estimated_height_cm when person bbox height ≥ this; reduces 120 cm outliers from tiny bboxes (DATA_QUALITY_IMPROVEMENTS_RESEARCH, IEEE 6233137).
+3. **Detection confidence (NIST AI 100-4)**: **Implemented:** Per-row `detection_confidence` (YOLO confidence for primary person); in export, verify hash, and search. See DATA_POINT_ACCURACY_RATING §1.
+4. **Document**: Add to EXTENDED_ATTRIBUTES.md the 224×224 recommendation and calibration.
 
 ---
 
-### Demographic fairness (perceived_gender, perceived_age_range)
+### Demographic fairness (perceived_gender, perceived_age, perceived_ethnicity)
 
-**perceived_gender** and **perceived_age_range** are produced by DeepFace and are **not NIST FRVT-validated**. They may exhibit **demographic differentials** (e.g. higher error rates for some skin tones or age bands — see NISTIR 8429, Gender Shades). For high-stakes identification, use an FRVT-validated engine or conduct an internal demographic audit. The app returns **face_attributes_note** in `GET /api/v1/what_we_collect` when extended attributes are on, directing operators to NISTIR 8429. See **DATA_POINT_ACCURACY_RATING.md** and **RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md** §4.
+**perceived_gender**, **perceived_age** / **perceived_age_range**, and **perceived_ethnicity** are raw DeepFace outputs (no bucketing or gating). They are **not NIST FRVT-validated** and may exhibit **demographic differentials** (e.g. higher error rates for some skin tones or ages — NISTIR 8429, Gender Shades). For high-stakes identification, use an FRVT-validated engine or conduct an internal demographic audit. The app returns **face_attributes_note** in `GET /api/v1/what_we_collect` when extended attributes are on. See **DATA_POINT_ACCURACY_RATING.md** and **RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md** §4.
 
 ---
 

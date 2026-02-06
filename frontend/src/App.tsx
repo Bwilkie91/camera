@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { REDIRECT_KEY } from './AuthContext';
 import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -384,6 +384,8 @@ function App() {
   const [eventToast, setEventToast] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const helpTriggerRef = useRef<HTMLButtonElement>(null);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -428,6 +430,12 @@ function App() {
     <PlaybackProvider>
     <PlaybackFromUrl />
     <div className="min-h-screen bg-[#0f0f0f] text-zinc-200">
+      <a
+        href="#main"
+        className="absolute left-[-9999px] focus:left-2 focus:top-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-cyan-600 focus:text-black focus:rounded focus:font-medium"
+      >
+        Skip to main content
+      </a>
       <header className="border-b border-zinc-800 px-4 py-3 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold tracking-tight">
@@ -451,18 +459,18 @@ function App() {
           >
             Auto sign-in
           </button>
-          <button type="button" onClick={() => setShowSearch(true)} className="text-zinc-500 hover:text-zinc-300 text-sm px-2" title="Quick search (Ctrl+K / ⌘K)">⌘K</button>
-          <button type="button" onClick={() => setShowHelp(true)} className="text-zinc-500 hover:text-zinc-300 text-sm" title="Keyboard shortcuts (?)">?</button>
+          <button ref={searchTriggerRef} type="button" onClick={() => setShowSearch(true)} className="text-zinc-500 hover:text-zinc-300 text-sm px-2" title="Quick search (Ctrl+K / ⌘K)">⌘K</button>
+          <button ref={helpTriggerRef} type="button" onClick={() => setShowHelp(true)} className="text-zinc-500 hover:text-zinc-300 text-sm" title="Keyboard shortcuts (?)">?</button>
           <button onClick={() => logout().then(() => window.location.href = '/login')} className="text-sm text-zinc-400 hover:text-white">Logout</button>
         </div>
       </header>
       <Nav />
-      <main>
+      <main id="main">
         <AppRoutes />
       </main>
       <EventToast show={eventToast} onDismiss={() => setEventToast(false)} />
-      <HelpModal show={showHelp} onClose={() => setShowHelp(false)} />
-      <SearchModal show={showSearch} onClose={() => setShowSearch(false)} />
+      <HelpModal show={showHelp} onClose={() => { setShowHelp(false); setTimeout(() => helpTriggerRef.current?.focus(), 0); }} />
+      <SearchModal show={showSearch} onClose={() => { setShowSearch(false); setTimeout(() => searchTriggerRef.current?.focus(), 0); }} />
     </div>
     </PlaybackProvider>
   );

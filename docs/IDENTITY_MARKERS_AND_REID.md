@@ -58,7 +58,7 @@ The following `ai_data` (and related) fields already support identity-related se
 |-------------|----------|-----------------|
 | **Identity label** | `individual` | Watchlist match name or “Unidentified”. |
 | **Face** | `facial_features`, watchlist embedding | Pose/emotion; optional face embedding for watchlist. |
-| **Demographic** | `perceived_gender`, `perceived_age_range` | DeepFace when ENABLE_SENSITIVE_ATTRIBUTES=1. |
+| **Demographic** | `perceived_gender`, `perceived_age`, `perceived_age_range`, `perceived_ethnicity` | DeepFace; raw model output when ENABLE_EXTENDED_ATTRIBUTES=1. |
 | **Anthropometric** | `estimated_height_cm`, `build` | Bbox aspect + heuristics (slim/medium/heavy). |
 | **Appearance** | `hair_color`, `clothing_description` | Dominant color in head/body ROI (e.g. “gray top/body”). |
 | **Behavioral** | `gait_notes` | From pose (upright, bent_torso, asymmetric, etc.); ENABLE_GAIT_NOTES. |
@@ -86,7 +86,7 @@ To **maximize usefulness for “find who someone is”** while staying within et
 - **Clothing:** `clothing_description` (refine to upper/lower + color if feasible; see below)  
 - **Gait/posture:** `gait_notes`  
 - **Pose:** `pose`  
-- **Demographic (optional):** `perceived_gender`, `perceived_age_range` (only when ENABLE_SENSITIVE_ATTRIBUTES=1)  
+- **Demographic (raw):** `perceived_gender`, `perceived_age`, `perceived_age_range`, `perceived_ethnicity` when ENABLE_EXTENDED_ATTRIBUTES=1  
 - **Identity:** `individual` (watchlist), optional ReID embedding (ENABLE_REID)
 
 ### Tier 2 — High value, minimal schema change
@@ -115,7 +115,7 @@ To **maximize usefulness for “find who someone is”** while staying within et
 
 - **Minimization:** Record only the markers needed for the stated purpose (e.g. security, incident review). Use **privacy preset** and **feature flags** (system_status) to run a minimal stack.  
 - **Transparency:** “What we collect” (e.g. GET /api/v1/what_we_collect) and signage should mention identity-related data (appearance, gait, optional face/ReID).  
-- **Retention:** Apply same retention as other ai_data; shorter retention for embeddings and sensitive attributes where possible.  
+- **Retention:** Apply same retention as other ai_data; shorter retention for embeddings where possible.  
 - **Search/export:** Attribute and identity markers are searchable and exportable; ensure access control and audit (saved searches, export approval) as in CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md.
 
 ---

@@ -2,6 +2,8 @@
 
 This document (1) summarizes **Surveillance Command (Vigil)** competitors and differentiators, (2) lists **must-add configurations, dependencies, and technology upgrades**, and (3) rates the current system **1–100** against highest government and enterprise standards.
 
+**2025–2026 update:** See **COMPETITORS_AND_STANDARDS_2026.md** for Rhombus/Verkada AI search (sub-second, NL), ONVIF/NISTIR 8161 alignment, and dependency/API improvement priorities.
+
 ---
 
 ## 1. Competitor Overview
@@ -179,7 +181,13 @@ Upgrades that materially improve compliance, scale, or feature parity with compe
 
 ---
 
-## 7. References
+## 7. 2025–2026 Update
+
+For **latest competitor AI/search features** (Rhombus sub-second NL search, Verkada AI search, ChatGPT-style search) and **NIST/ONVIF 2025** (ONVIF Export, media signing, per-frame UTC), see **COMPETITORS_AND_STANDARDS_2026.md**. That doc also summarizes dependency and API validation improvements.
+
+---
+
+## 8. References
 
 - **NISTIR 8161 Rev.1** — CCTV digital video export (chain of custody, metadata).
 - **CJIS Security Policy 6.0** — MFA, audit, encryption.

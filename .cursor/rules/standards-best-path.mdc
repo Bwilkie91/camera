@@ -1,0 +1,20 @@
+---
+description: Apply best-path highest standards (evidence, privacy, LE/civilian) in all changes
+alwaysApply: true
+---
+
+# Standards: Best Path Forward
+
+This project applies the **best path to highest standards** (90+). When changing evidence, export, collection, or privacy-related code or config, follow:
+
+- **Roadmap:** [docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md) — Phase 1 (config/ops) → Phase 2 (data quality) → Phase 3 (security/evidence) → Phase 4 (optional).
+- **Data quality to 90+:** [docs/PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md) — per–data-point plan with enterprise/LE/journal refs; [docs/DATA_POINT_ACCURACY_RATING.md](docs/DATA_POINT_ACCURACY_RATING.md) for scores and applied improvements.
+- **Additional sources:** [docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md](docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md) — military, civilian, academic, LE gaps and P1–P3 actions.
+- **Applied commitment:** [docs/STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) — what the project has integrated and how to keep it current.
+
+**Conventions:**
+- Exports and manifests: include chain-of-custody metadata (operator, system_id, UTC, SHA-256); incident_bundle includes preservation_checklist and collection_checklist (operator, purpose, cameras, retention).
+- Config/docs: when biometric (face/emotion) or LPR is enabled, surface DPIA/lawful-basis reminder; document redaction for SAR/third-party sharing in LEGAL_AND_ETHICS.
+- New features touching ai_data, events, or recordings: preserve canonical schema, integrity_hash, timestamp_utc, model_version, system_id; see AI_DETECTION_LOGS_STANDARDS.md.
+- Security: prefer ENFORCE_HTTPS=1 and recording fixity in production; document in RUNBOOKS.
+

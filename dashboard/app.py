@@ -89,8 +89,15 @@ def _all_pages_content():
 _initial_page_content = _all_pages_content()
 
 # ---- Layout: sidebar + header + main (include components so callback IDs exist) ----
+# Skip link for WCAG 2.4.1 (bypass blocks); visible on focus
+_skip_link_style = {
+    "position": "absolute", "left": "-9999px", "padding": "0.5rem 1rem",
+    "background": "var(--vigil-primary, #2563eb)", "color": "#fff", "fontWeight": "600",
+    "zIndex": "9999", "borderRadius": "0.375rem",
+}
 app.layout = html.Div(
     [
+        html.A("Skip to main content", href="#main-content", id="skip-link", style=_skip_link_style),
         dcc.Location(id="url", refresh=False),
         dcc.Store(id="theme-store", data=THEME_DEFAULT),
         dcc.Store(id="filtered-data-store", data=None),
@@ -120,6 +127,7 @@ app.layout = html.Div(
                                     className="g-0 mx-0",
                                 ),
                             ],
+                            id="main-content",
                             className="flex-grow-1 min-vw-0 p-0",
                         ),
                     ],

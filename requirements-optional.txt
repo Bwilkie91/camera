@@ -26,5 +26,12 @@ paho-mqtt>=2.0.0
 # TensorFlow-free emotion (EMOTION_BACKEND=emotiefflib)
 # emotiefflib>=1.0.0
 
-# Security audit (run: pip audit or scripts/audit-deps.sh)
+# Security audit (run: pip audit or scripts/audit-deps.sh; use in CI — see docs/SURVEILLANCE_COMMAND_COMPETITORS_AND_RATING.md)
 pip-audit>=2.0.0
+
+# Production WSGI server (recommended for production; do not use Flask dev server in prod)
+gunicorn>=21.0.0
+
+# Structured logging (optional; SOC/enterprise machine-parseable logs)
+# structlog>=24.0.0
+# python-json-logger>=2.0.0

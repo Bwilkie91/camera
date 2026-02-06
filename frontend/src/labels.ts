@@ -88,7 +88,8 @@ export function getSeverityDescription(severity: SeverityKey): string {
 /** Extended detection attributes (person description, behavior, intent, sci-fi style scores). */
 export const EXTENDED_ATTRIBUTE_LABELS: Record<string, string> = {
   perceived_gender: 'Gender (perceived)',
-  perceived_age_range: 'Age range',
+  perceived_age: 'Age (years)',
+  perceived_age_range: 'Age (raw)',
   perceived_ethnicity: 'Ethnicity (perceived)',
   hair_color: 'Hair color',
   estimated_height_cm: 'Height (cm)',
@@ -104,12 +105,14 @@ export const EXTENDED_ATTRIBUTE_LABELS: Record<string, string> = {
   threat_score: 'Threat score',
   anomaly_score: 'Anomaly score',
   attention_region: 'Attention region',
+  detection_confidence: 'Detection confidence',
 };
 
 export const EXTENDED_ATTRIBUTE_DESCRIPTIONS: Record<string, string> = {
-  perceived_gender: 'Model-inferred gender presentation. Sensitive; disable with ENABLE_SENSITIVE_ATTRIBUTES=0.',
-  perceived_age_range: 'Estimated age band (e.g. 18-29).',
-  perceived_ethnicity: 'Model-inferred ethnicity. Highly sensitive; only when ENABLE_SENSITIVE_ATTRIBUTES=1.',
+  perceived_gender: 'Raw model-inferred gender (DeepFace).',
+  perceived_age: 'Raw estimated age in years (model output).',
+  perceived_age_range: 'Raw age as string (same as perceived_age).',
+  perceived_ethnicity: 'Raw model-inferred ethnicity (DeepFace).',
   hair_color: 'Dominant color in head region (heuristic).',
   estimated_height_cm: 'Approximate height from pose/bbox scale.',
   build: 'Body build: slim, medium, heavy (from bbox aspect).',
@@ -124,6 +127,7 @@ export const EXTENDED_ATTRIBUTE_DESCRIPTIONS: Record<string, string> = {
   threat_score: 'Heuristic 0–100 risk score from behavior and stress.',
   anomaly_score: 'Behavioral anomaly 0–1 (e.g. loiter/line_cross).',
   attention_region: 'Where subject is looking (stub; needs gaze model).',
+  detection_confidence: 'YOLO confidence for primary person (0–1); NIST AI 100-4 provenance.',
 };
 
 /** Extended audio attributes (same intensity as visual pipeline). */

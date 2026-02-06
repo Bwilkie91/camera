@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchMe, fetchAuditLog, fetchMfaStatus, mfaSetup, mfaConfirm, changePassword, fetchDevices, downloadAuditLogExport, fetchAuditLogVerify, fetchConfig, updateConfig, fetchUsers, fetchUserSites, updateUserSites, fetchSites, fetchWhatWeCollect, updateRecordingConfig, type AnalyticsConfig } from '../api/client';
+import { fetchMe, fetchAuditLog, fetchMfaStatus, mfaSetup, mfaConfirm, changePassword, fetchDevices, downloadAuditLogExport, fetchAuditLogVerify, fetchConfig, updateConfig, fetchUsers, fetchUserSites, updateUserSites, fetchSites, fetchWhatWeCollect, updateRecordingConfig, resetServerData, type AnalyticsConfig } from '../api/client';
 
 function DevicesSection() {
   const { data, isLoading, error } = useQuery({ queryKey: ['devices'], queryFn: fetchDevices });
@@ -31,6 +31,73 @@ function DevicesSection() {
             ))}
           </ul>
         </div>
+      </div>
+    </section>
+  );
+}
+
+const WIPE_CONFIRM_MESSAGE =
+  'Clear all cached data and reset visuals? Charts, events, and lists will refetch from server. Server data is not deleted.';
+const RESET_SERVER_CONFIRM_MESSAGE =
+  'Permanently delete all events and AI data on the server? Counts will go to zero. Recordings and users are not affected. Admin only.';
+
+function DataAndCacheSection() {
+  const queryClient = useQueryClient();
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const onClearCache = useCallback(() => {
+    if (!window.confirm(WIPE_CONFIRM_MESSAGE)) return;
+    queryClient.clear();
+  }, [queryClient]);
+
+  const onResetServer = useCallback(async () => {
+    if (!window.confirm(RESET_SERVER_CONFIRM_MESSAGE)) return;
+    setResetLoading(true);
+    try {
+      const result = await resetServerData();
+      if (result.success) {
+        queryClient.clear();
+      } else {
+        window.alert(result.error || 'Reset failed');
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Reset failed');
+    } finally {
+      setResetLoading(false);
+    }
+  }, [queryClient]);
+
+  return (
+    <section className="rounded-lg bg-zinc-900 border border-zinc-700 p-4">
+      <h2 className="text-sm font-medium text-zinc-400 mb-2">Data &amp; cache</h2>
+      <p className="text-zinc-500 text-xs mb-3">
+        Clear client cache to refetch all data from the server. Reset server data to permanently delete events and AI data (admin only).
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onClearCache}
+          className="px-3 py-1.5 rounded text-sm font-medium text-amber-400/90 hover:text-amber-300 hover:bg-zinc-800 border border-amber-500/30"
+          title="Clear cached data and reset all data visuals (client-side only)"
+          aria-label="Clear data cache and reset visuals"
+          data-action="clear-data-cache"
+        >
+          Clear data cache
+        </button>
+        {me?.role === 'admin' && (
+          <button
+            type="button"
+            onClick={onResetServer}
+            disabled={resetLoading}
+            className="px-3 py-1.5 rounded text-sm font-medium text-red-400/90 hover:text-red-300 hover:bg-zinc-800 border border-red-500/40 disabled:opacity-50"
+            title="Delete all events and AI data on server (admin only)"
+            aria-label="Reset server data (delete events and AI data)"
+            data-action="reset-server-data"
+          >
+            {resetLoading ? 'Resetting…' : 'Reset server data'}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -173,6 +240,7 @@ export default function Settings() {
             Camera list, stream URLs, and retention are configured via backend env (see .env.example).
           </p>
         </section>
+        <DataAndCacheSection />
         <DevicesSection />
         <section className="rounded-lg bg-zinc-900 border border-zinc-700 p-4">
           <h2 className="text-sm font-medium text-cyan-400 mb-2">Privacy &amp; transparency</h2>

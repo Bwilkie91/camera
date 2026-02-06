@@ -72,7 +72,8 @@ def build_modal_body(row: dict | None, vigil_ui_base: str | None = None) -> list
     order = [
         "timestamp_local", "local_timestamp", "timestamp_utc", "object", "scene", "event",
         "crowd_count", "threat_score", "anomaly_score", "value", "time_since_prev",
-        "clothing_description", "estimated_height_cm", "perceived_age_range", "hair_color", "build", "stress_level",
+        "clothing_description", "estimated_height_cm", "perceived_age", "perceived_age_range", "perceived_gender", "perceived_ethnicity", "hair_color", "build", "stress_level",
+        "detection_confidence",
         "anomaly_sudden_appearance_change", "gait_notes", "suspicious_behavior", "predicted_intent",
         "integrity_hash", "camera_id", "model_version",
     ]

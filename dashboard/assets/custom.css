@@ -1,5 +1,11 @@
 /* Enterprise SOC dashboard — color scheme, design & placement (2026) */
 
+/* Skip to main content (WCAG 2.4.1) */
+#skip-link:focus {
+  left: 0.5rem !important;
+  top: 0.5rem !important;
+}
+
 :root {
   /* Primary palette */
   --vigil-sidebar-bg: #0f172a;

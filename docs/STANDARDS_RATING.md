@@ -12,7 +12,7 @@ This document rates the Vigil edge video security platform against **highest ind
 | **Access control & auth** | 20% | 88 | RBAC (viewer/operator/admin), MFA (TOTP), password policy/expiry/history, session timeout, lockout; export-approval (civilian mode) |
 | **Data collection & quality** | 15% | 82 | Gated by recording; canonical row schema; primary-person consistency (centroid + attributes); height scaling; batch + flush on stop |
 | **Audit & accountability** | 15% | 88 | Audit log (login, export, config, recording); integrity verification endpoints; retention (RETENTION_DAYS, AUDIT_RETENTION_DAYS) |
-| **Privacy & ethics** | 10% | 78 | Civilian mode, optional sensitive attributes, docs (CIVILIAN_ETHICS_AUDIT, LEGAL_AND_ETHICS); ReID/watchlist opt-in |
+| **Privacy & ethics** | 10% | 78 | Civilian mode; raw demographics when extended on; docs (CIVILIAN_ETHICS_AUDIT, LEGAL_AND_ETHICS); ReID/watchlist opt-in |
 | **Security & operations** | 10% | 72 | ENFORCE_HTTPS=1 (redirect) or =reject (403); CSP/HSTS configurable; fixity option; no encryption at rest |
 | **Documentation & provenance** | 5% | 95 | 40+ docs (standards, audit, collection, accuracy, config); .env.example and CONFIG_AND_OPTIMIZATION; AI model_version in every row |
 
@@ -25,7 +25,7 @@ This document rates the Vigil edge video security platform against **highest ind
 - **Chain of custody**: NISTIR 8161 / SWGDE — UTC timestamps, equipment ID, per-row and export-level integrity, operator and system in export headers. **Vigil: implemented.**
 - **Access & audit**: CJIS/NIST — RBAC, MFA, session/lockout, audit log and verification. **Vigil: strong.**
 - **Data collection**: Only when recording on; consistent schema; same primary person for centroid and attributes; scalable height estimate. **Vigil: improved and documented.**
-- **Privacy**: Civilian mode (export requires approval); sensitive attributes opt-in; ethics docs. **Vigil: good.**
+- **Privacy**: Civilian mode (export requires approval); raw demographics when extended on; ethics docs. **Vigil: good.**
 - **Security**: Encryption at rest, enforced TLS, key management. **Vigil: weak (documented only).**
 
 ---

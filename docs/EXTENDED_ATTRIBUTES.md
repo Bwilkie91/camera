@@ -15,17 +15,17 @@ This document describes the **extended person and behavior attributes** added to
 | **hair_color** | Dominant color in top 25% of person ROI | black, white, red, blue, green, brown, gray, unknown. |
 | **clothing_description** | Dominant color in lower 2/3 body ROI | e.g. "blue top/body". |
 
-### 1.2 Demographic proxies (optional; compliance-sensitive)
+### 1.2 Demographic proxies (raw data; no bias engineering)
 
-| Field | Source | Env / policy |
-|-------|--------|--------------|
-| **perceived_gender** | DeepFace `gender` on person crop | Requires `ENABLE_EXTENDED_ATTRIBUTES=1` (default). Crop resized to **224×224** for age/gender path (PLAN_90_PLUS; NIST/ISO alignment). |
-| **perceived_age_range** | DeepFace `age` → bands | 0-17, 18-29, 30-44, 45-59, 60+. Same 224×224 input. |
-| **perceived_ethnicity** | DeepFace `race` | **Only if `ENABLE_SENSITIVE_ATTRIBUTES=1`** (default **0**). Many jurisdictions and policies prohibit use; enable only where legally and ethically justified. |
+| Field | Source | Notes |
+|-------|--------|--------|
+| **perceived_gender** | DeepFace `dominant_gender` on person crop | Raw model output. Requires `ENABLE_EXTENDED_ATTRIBUTES=1`. Crop 224×224. |
+| **perceived_age** | DeepFace `age` (integer) | Raw estimated age in years. New column for numeric use. |
+| **perceived_age_range** | Same `age` as string | Raw age as string (e.g. `"34"`), no bucketing. |
+| **perceived_ethnicity** | DeepFace `dominant_race` | Raw model output; always stored when extended attributes are on (no gating). |
 
-- **ENABLE_EXTENDED_ATTRIBUTES** (default `1`): Enables DeepFace age/gender and all heuristics.
-- **ENABLE_SENSITIVE_ATTRIBUTES** (default `0`): Enables perceived_ethnicity/race. Keep off unless required and compliant.
-- **FRVT / demographic fairness:** perceived_gender and perceived_age_range are **not NIST FRVT-validated** and may show demographic differentials (NISTIR 8429, Gender Shades). For high-stakes identification, use an FRVT-validated engine or conduct an internal audit. **GET /api/v1/what_we_collect** returns `face_attributes_note` when extended attributes are on. See **ACCURACY_RESEARCH_AND_IMPROVEMENTS.md** § Demographic fairness and **DATA_POINT_ACCURACY_RATING.md**.
+- **ENABLE_EXTENDED_ATTRIBUTES** (default `1`): Enables DeepFace age/gender/race and all heuristics. No bucketing or legal gating; civilian-only raw demographics.
+- **FRVT / demographic fairness:** These are model outputs, not NIST FRVT-validated. See **ACCURACY_RESEARCH_AND_IMPROVEMENTS.md** and **DATA_POINT_ACCURACY_RATING.md**.
 
 ### 1.3 Behavioral and intent
 
@@ -93,7 +93,7 @@ Threat/negative/stress keyword sets are defined in `app.py` (`_AUDIO_THREAT_KEYW
 - **Table**: `ai_data`. New columns added via migration in `_init_schema()`.
 - **Hash**: `_AI_DATA_HASH_ORDER` includes all new fields for chain-of-custody integrity.
 - **Export**: CSV export includes all columns (`SELECT *`).
-- **Search**: `POST /api/v1/search` searches across: object, event, scene, license_plate, suspicious_behavior, predicted_intent, stress_level, hair_color, build, perceived_gender, perceived_age_range, clothing_description, gait_notes, intoxication_indicator, micro_expression.
+- **Search**: `POST /api/v1/search` searches across: object, event, scene, license_plate, suspicious_behavior, predicted_intent, stress_level, hair_color, build, perceived_gender, perceived_age_range, perceived_age, perceived_ethnicity, clothing_description, gait_notes, intoxication_indicator, micro_expression.
 
 ---
 
@@ -131,15 +131,14 @@ These are feasible next steps from current literature; not all implemented yet.
 ## 5. UI and Labels
 
 - **Activity log** (Flask): Table includes Time, Event, Object, Emotion, Pose, Scene, Crowd, Plate, Camera, **Stress, Build, Hair, Intent, Suspicious, Threat, Height, Age, Gender** (horizontal scroll on small screens).
-- **Timeline / Events**: Event metadata includes extended fields (suspicious_behavior, predicted_intent, stress_level, threat_score, anomaly_score, build, hair_color, estimated_height_cm, perceived_age_range, perceived_gender) in expandable detail and JSON.
+- **Timeline / Events**: Event metadata includes extended fields (suspicious_behavior, predicted_intent, stress_level, threat_score, anomaly_score, build, hair_color, estimated_height_cm, perceived_age, perceived_age_range, perceived_gender, perceived_ethnicity) in expandable detail and JSON.
 - **Frontend labels**: `frontend/src/labels.ts` defines `EXTENDED_ATTRIBUTE_LABELS` and `EXTENDED_ATTRIBUTE_DESCRIPTIONS` for consistent tooltips and filters.
 
 ---
 
 ## 6. Compliance and Ethics
 
-- **Race/ethnicity**: Off by default (`ENABLE_SENSITIVE_ATTRIBUTES=0`). Many organizations and laws restrict or prohibit use; enable only where explicitly allowed.
-- **Gender/age**: Often used in witness-style descriptions; still PII. Prefer minimal retention and access controls.
+- **Demographics**: Age, gender, and ethnicity are stored as raw model output (no bucketing or gating). Civilian-only; operator is responsible for lawful use and retention.
 - **Intoxication/drug**: Stubs only; do not use for enforcement without validated, legally approved systems and policies.
 
 Implementations follow a single DeepFace call per frame for speed, heuristics for the rest, and clear stubs and docs for future sci-fi upgrades (gait, MER, gaze, rPPG, continuous suspicion).

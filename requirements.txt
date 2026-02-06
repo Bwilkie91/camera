@@ -36,3 +36,13 @@ mediapipe>=0.10.0
 
 # Optional: TOTP MFA (NIST IR 8523 / CJIS); set ENABLE_MFA=1
 # pyotp>=2.9.0
+
+# Optional: Production WSGI server (use instead of Flask dev server). See RUNBOOKS.
+# gunicorn>=21.0.0
+
+# Security: run "pip audit" or scripts/audit-deps.sh in CI. Install pip-audit via requirements-optional.txt.
+
+# Optional: Production WSGI server (use instead of Flask dev server; see RUNBOOKS)
+# gunicorn>=21.0.0
+
+# Security: run "pip audit" or "scripts/audit-deps.sh" in CI; install pip-audit via requirements-optional.txt

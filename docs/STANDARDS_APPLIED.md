@@ -28,6 +28,8 @@ The project applies the roadmap in **[BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](BE
 | **Cross-references** | STANDARDS_RATING, DATA_COLLECTION_RESEARCH, CIVILIAN_ETHICS, GOVERNMENT_STANDARDS_AUDIT link to best path and research. | Those docs. |
 | **Current ratings** | STANDARDS_RATING 85/100; GOVERNMENT_STANDARDS_AUDIT 75/100; log export baseline ~58 (DATA_COLLECTION_RESEARCH §3.1) with applied improvements raising effective score. | docs/STANDARDS_RATING.md; docs/GOVERNMENT_STANDARDS_AUDIT.md; docs/DATA_COLLECTION_RESEARCH.md. |
 | **Height calibration** | Optional HEIGHT_REF_CM / HEIGHT_REF_PX for estimated_height_cm (Phase 2.4). | .env.example; app.py _extract_extended_attributes. |
+| **HEIGHT_MIN_PX** | Min person bbox height (px) to compute estimated_height_cm (default 60); reduces 120 cm outliers (DATA_QUALITY_IMPROVEMENTS_RESEARCH). | .env.example; app.py _extract_extended_attributes. |
+| **detection_confidence** | YOLO confidence for primary person stored per row; export and verify (NIST AI 100-4 provenance). | app.py _extract_extended_attributes; ai_data schema; GET /api/v1/ai_data/verify. |
 | **Emotion min crop** | EMOTION_MIN_CROP_SIZE (default 48); skip/Neutral when person crop too small (Phase 2.1). | .env.example; app.py _get_dominant_emotion. |
 | **Line-cross debounce** | LINE_CROSS_DEBOUNCE_CYCLES (default 1); confirm centroid on opposite side before firing (Phase 2.3). | .env.example; app.py check_loiter_and_line_cross. |
 | **Pose on person crop** | MediaPipe runs on largest person crop first; Standing/Sitting/Walking from landmarks (Phase 2.2). | app.py: _pose_label_from_landmarks, pose block; POSE_MIN_CROP_SIZE. |
@@ -51,10 +53,14 @@ The project applies the roadmap in **[BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](BE
 | **Audio keywords (PLAN_90_PLUS Phase C)** | Expanded _AUDIO_THREAT_KEYWORDS (intruder, danger, 911, intrusion, etc.) and _AUDIO_STRESS_KEYWORDS (worried, urgent, pain, fall, fell, down). | app.py _extract_audio_attributes. |
 | **Export certificate (Phase 3.5 doc)** | KEY_MANAGEMENT § Export manifest signing; RUNBOOKS § Export certificate (optional). SHA-256 in place; signed manifest / dual-hash documented as optional future. | docs/KEY_MANAGEMENT.md; docs/RUNBOOKS.md. |
 | **Video redaction (Phase 4.7)** | LEGAL_AND_ETHICS § Video redaction: for SAR/third-party sharing use external redaction tool on exported video; primary vs working copy. | docs/LEGAL_AND_ETHICS.md. |
+| **API limit/date validation** | Centralized _api_limit(default, max_cap) and _parse_date_yyyymmdd() for safe limit/date parsing on v1/search, notable_screenshots, audit_log, audit_log/export (NIST/OWASP input validation). | app.py _api_limit, _parse_date_yyyymmdd; SURVEILLANCE_COMMAND_COMPETITORS_AND_RATING § Must-Add. |
+| **Competitor & standards 2026** | COMPETITORS_AND_STANDARDS_2026: Rhombus/Verkada AI search (sub-second, NL), ONVIF/NISTIR 8161 alignment, gunicorn/pip-audit/structlog in optional deps. | docs/COMPETITORS_AND_STANDARDS_2026.md; requirements-optional.txt. |
 | **DPIA / lawful basis (Phase 1.7)** | LEGAL_AND_ETHICS § DPIA and lawful basis; what_we_collect + dpia_recommended when biometric/LPR on. | docs/LEGAL_AND_ETHICS.md; app.py api_v1_what_we_collect. |
 | **Deployment checklist (P3)** | CIVILIAN_ETHICS §2.5: purpose, necessity, less intrusive options, DPIA, redaction (link to LEGAL_AND_ETHICS). | docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md. |
 | **Gov/LE alignment notes** | GOVERNMENT_STANDARDS_AUDIT: retention + legal hold Done; ISO 62676, SWGDE 18-F-002, OSAC alignment noted. | docs/GOVERNMENT_STANDARDS_AUDIT.md. |
 | **FRVT/demographic in accuracy doc** | ACCURACY_RESEARCH_AND_IMPROVEMENTS: Demographic fairness §; perceived_gender/age not FRVT-validated; face_attributes_note. | docs/ACCURACY_RESEARCH_AND_IMPROVEMENTS.md. |
+| **Skip to main content (WCAG 2.4.1)** | React: skip link (visible on focus) + `id="main"`; legacy: skip link + `id="main"`; Dash: skip link + `id="main-content"`. | frontend/src/App.tsx; templates/index.html; dashboard/app.py. |
+| **Focus return on modal close (React)** | Help and Quick search modals return focus to trigger button on close (WCAG 2.1.2). | frontend/src/App.tsx. |
 
 ---
 

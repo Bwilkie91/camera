@@ -6,8 +6,10 @@
 
 ### Recent improvements
 
+- **Best path to highest levels**: Roadmap in [BEST_PATH_FORWARD_HIGHEST_STANDARDS.md](docs/BEST_PATH_FORWARD_HIGHEST_STANDARDS.md) applied (Phases 1–3 + key Phase 4); [STANDARDS_APPLIED.md](docs/STANDARDS_APPLIED.md) for full list.
 - **Standards & data quality**: 90+ data-point plan ([PLAN_90_PLUS_DATA_POINTS.md](docs/PLAN_90_PLUS_DATA_POINTS.md)), applied improvements (224×224 DeepFace, centroid smoothing, CLAHE for low-light emotion, MOG2/scene tuning); FRVT disclaimer and OSAC image_type in exports.
 - **Security & ops**: `ENFORCE_HTTPS=reject` (403 on HTTP when set); legal hold API; deployment checklist and runbooks.
+- **Frontend & accessibility**: WCAG 2.4.1 skip-to-main on React, legacy HTML, and Dash; focus return on modal close (React). Enterprise UX audit: [FRONTEND_UX_UI_ENTERPRISE_AUDIT.md](docs/FRONTEND_UX_UI_ENTERPRISE_AUDIT.md).
 - **Testing**: Unit tests for integrity hashes and geometry (`tests/`); gait/env script (`scripts/test_gait_and_env.py`); DB cleanup so test runs finish without ResourceWarning.
 - **Performance**: Reused CLAHE instance for emotion preprocessing; config and docs in [OPTIMIZATION_AUDIT.md](docs/OPTIMIZATION_AUDIT.md) and [CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIMIZATION.md).
 
@@ -151,7 +153,7 @@ Full matrix and presets: [docs/CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIM
 - **Motion**: Frame-diff; triggers Motion Detected event.
 - **Loitering / line-crossing**: Zones and crossing lines in `config.json`; person centroids; configurable dwell and debounce.
 - **Crowding**: Optional alert when person count ≥ `CROWD_DENSITY_ALERT_THRESHOLD`.
-- **Data quality**: Canonical ai_data schema; primary person (largest bbox) used for centroid and extended attributes; resolution-scaled height estimate. [docs/DATA_COLLECTION_RESEARCH.md](docs/DATA_COLLECTION_RESEARCH.md).
+- **Data quality**: Canonical ai_data schema; primary person (largest bbox) used for centroid and extended attributes; resolution-scaled height estimate; per-row `detection_confidence` and `integrity_hash`. [docs/DATA_COLLECTION_RESEARCH.md](docs/DATA_COLLECTION_RESEARCH.md). **Data quality rating (1–100)** and how to reach 85+: [docs/DATA_QUALITY_RATING_SAMPLE.md](docs/DATA_QUALITY_RATING_SAMPLE.md); research and improvements: [docs/DATA_QUALITY_IMPROVEMENTS_RESEARCH.md](docs/DATA_QUALITY_IMPROVEMENTS_RESEARCH.md).
 
 ### Events & alerts
 
@@ -173,6 +175,7 @@ Full matrix and presets: [docs/CONFIG_AND_OPTIMIZATION.md](docs/CONFIG_AND_OPTIM
 - **Password policy**: Min length, digit, special, expiry, history (configurable).
 - **Audit log**: Login, export, config change, recording; export with SHA-256; verify endpoint.
 - **Civilian mode**: `EXPORT_REQUIRES_APPROVAL=1` so only admin can export. [docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md](docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md).
+- **Personal use**: `PERSONAL_USE=1` removes ethical/compliance gates — always full AI detail (emotion, LPR, extended attributes), no minimal preset, no DPIA reminder, export without approval; set `EXPORT_REQUIRES_APPROVAL=0` and optionally `RETENTION_DAYS=0`, `ENABLE_WATCHLIST=1`, `ENABLE_REID=1`.
 
 ### Evidence & export
 
@@ -490,6 +493,7 @@ The `docs/` folder contains 40+ guides grouped below. Start with [STANDARDS_APPL
 
 ### Frontend & UX
 
+- [FRONTEND_UX_UI_ENTERPRISE_AUDIT.md](docs/FRONTEND_UX_UI_ENTERPRISE_AUDIT.md) — WCAG 2.2, Nielsen, SOC/enterprise scan; P0/P1 remediation (skip links, focus return).
 - [APP_REVIEW_AND_RATING.md](docs/APP_REVIEW_AND_RATING.md) — Application review (78/100), features, design.
 - [FRONTEND_UI_AUDIT.md](docs/FRONTEND_UI_AUDIT.md) — React UI audit.
 
@@ -501,6 +505,8 @@ The `docs/` folder contains 40+ guides grouped below. Start with [STANDARDS_APPL
 ### Research & roadmap
 
 - [ENTERPRISE_ROADMAP.md](docs/ENTERPRISE_ROADMAP.md) — Best-in-class comparison, scaling, AI/ML.
+- [SURVEILLANCE_COMMAND_COMPETITORS_AND_RATING.md](docs/SURVEILLANCE_COMMAND_COMPETITORS_AND_RATING.md) — Competitor overview, must-add config/deps, government & enterprise rating (74/100).
+- [COMPETITORS_AND_STANDARDS_2026.md](docs/COMPETITORS_AND_STANDARDS_2026.md) — 2025–2026 competitor AI search (Rhombus/Verkada), ONVIF/NISTIR 8161, dependency priorities.
 - [TECHNOLOGY_RESEARCH_AND_CONFIG.md](docs/TECHNOLOGY_RESEARCH_AND_CONFIG.md) — Speech backends, RTSP, inference.
 - [OPTIMIZATION_AUDIT.md](docs/OPTIMIZATION_AUDIT.md) — Performance, DB, limits.
 

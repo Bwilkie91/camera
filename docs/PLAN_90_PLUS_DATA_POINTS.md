@@ -17,7 +17,9 @@ This document is the **master plan** to raise every Vigil data point to **90+** 
 | **motion** | 62→82 | MOG2 + MORPH_OPEN applied. Tune varThreshold (env); optional contour area filter. | IEEE/Semanticscholar; 90% precision in studies. |
 | **timestamp_utc** | 92→98 | Add per-frame or per-segment UTC in MP4 export (timed metadata). NTP done. | NISTIR 8161 Rev.1; ONVIF Export; NIST Digital Video Exchange. |
 | **perceived_gender / perceived_age_range** | 48–50→85 | Resize person crop to **224×224** before DeepFace.analyze(age, gender); document “not FRVT-validated”; optional demographic audit. | NIST FRVT/FATE; NISTIR 8525 (age); ISO 30137-1:2024 (age/gender in VSS). |
-| **centroid / world_x,y** | 82→92 | Homography per camera for world_x/y; centroid already normalized. | NISTIR 8161; MAPPING_OPTIMIZATION_RESEARCH. |
+| **centroid / world_x,y** | 82→92 | Homography per camera for world_x/y; centroid already normalized. Calibrate config/homography.json (see config/README). | NISTIR 8161; MAPPING_OPTIMIZATION_RESEARCH. |
+| **detection_confidence** | —→95 | **Applied:** YOLO confidence for primary person per row; export and verify. | NIST AI 100-4. |
+| **estimated_height_cm** (outliers) | 55→72 | **Applied:** HEIGHT_MIN_PX=60 so height only when bbox ≥ 60 px; reduces 120 cm outliers. | IEEE 6233137; single-view metrology. |
 
 ---
 
@@ -27,7 +29,7 @@ This document is the **master plan** to raise every Vigil data point to **90+** 
 |------------|----------------|--------|--------------------|
 | **emotion** | 55→82 | CLAHE/gamma when mean intensity < threshold (AVES-style); min crop 48 done; 224×224 for age/gender path. Report demographic caveats. | Springer AVES ~11% gain; low-light FER (LLDif); NIST FRVT demographics. |
 | **pose** | 78→88 | Person-crop-first done; validate on deployment angles; document limits. Optional: finer Sitting/Walking from landmarks. | MediaPipe vs motion capture (De Gruyter, PMC); ISO 30137 (gait). |
-| **estimated_height_cm** | 55→78 | HEIGHT_REF per camera done; document calibration; optional vanishing-point method. | Single-view metrology (Springer); surveillance height (Sapienza, Sciencedirect). |
+| **estimated_height_cm** | 55→78 | HEIGHT_REF per camera done; HEIGHT_MIN_PX=60 done. Document calibration; optional vanishing-point method. | Single-view metrology (Springer); surveillance height (Sapienza, Sciencedirect). |
 | **loiter / line_cross** | 75→88 | Centroid smoothing (moving avg over 3–5 frames) for primary; debounce done. Calibrate loiter_seconds per FOV. | IEEE trajectory; Springer PETS2007 (75% recall, 87% prec). |
 | **integrity_hash / model_version / system_id** | 95→98 | Optional dual-hash (SHA-256 + SHA3-256) for high assurance; document. | SWGDE 23-V-001; OSAC fixity. |
 

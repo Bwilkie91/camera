@@ -108,8 +108,7 @@ Implementing (1)–(4) and (6) would bring this sample's effective score into th
 | `ANALYZE_INTERVAL_SECONDS` | Seconds between analysis cycles (default 10). |
 | `AI_DATA_BATCH_SIZE` | Rows buffered before commit (default 10; max 50). |
 | `YOLO_CONF`, `YOLO_CLASS_CONF` | Confidence thresholds; lower = more detections, more false positives. |
-| `ENABLE_EXTENDED_ATTRIBUTES` | When 1, collect perceived_gender, perceived_age_range, build, hair, height, clothing, gait_notes, etc. |
-| `ENABLE_SENSITIVE_ATTRIBUTES` | When 1, collect perceived_ethnicity (DeepFace race). |
+| `ENABLE_EXTENDED_ATTRIBUTES` | When 1, collect raw perceived_age, perceived_age_range, perceived_gender, perceived_ethnicity (DeepFace), build, hair, height, clothing, gait_notes, etc. No bucketing or gating. |
 | `ENABLE_GAIT_NOTES` | When 1, derive gait_notes from MediaPipe pose. |
 | Recording config `ai_detail` | `full` = extended attributes; `minimal` = date, time, event, object, camera_id, timestamp_utc only. |
 | Recording config `capture_audio` | When true, fill audio_* fields from microphone/transcription. |
@@ -122,6 +121,9 @@ Implementing (1)–(4) and (6) would bring this sample's effective score into th
 | `EMOTION_CLAHE_THRESHOLD` | Mean intensity below which CLAHE is applied on L channel for emotion (default 80; 0=off). Phase 2.1. |
 | `SCENE_VAR_MAX_INDOOR` | Max lower-half variance for Indoor classification (default 5000); Indoor only when mean &lt; 100 and var &lt; this (PLAN_90_PLUS). |
 | `CENTROID_SMOOTHING_FRAMES` | Moving average of primary centroid over N frames for line-cross (default 5; 0=off). PLAN_90_PLUS. |
+| `HEIGHT_REF_CM`, `HEIGHT_REF_PX` | Per-camera height calibration for estimated_height_cm (Phase 2.4). | 
+| `HEIGHT_MIN_PX` | Min person bbox height (px) to compute estimated_height_cm (default 60); reduces 120 cm outliers. | 
+| (stored per row) | **detection_confidence**: YOLO confidence for primary person (NIST AI 100-4 provenance). | 
 
 **Scene:** Indoor/Outdoor uses **lower-half mean** + **variance** (SCENE_VAR_MAX_INDOOR). **LPR:** ROI upscaled when width &lt; 80 px or height &lt; 24 px. **Loiter/line:** Centroid smoothing (CENTROID_SMOOTHING_FRAMES) and line-cross debounce (LINE_CROSS_DEBOUNCE_CYCLES).
 
@@ -135,4 +137,6 @@ Implementing (1)–(4) and (6) would bring this sample's effective score into th
 - **AI_DETECTION_LOGS_STANDARDS.md** — NISTIR 8161, SWGDE, export integrity.
 - **ACCURACY_RESEARCH_AND_IMPROVEMENTS.md** — Per-field sources and accuracy improvements.
 - **DATA_POINT_ACCURACY_RATING.md** — Per–data-point rating (1–100) and improvements (military, LE, academic sources).
+- **DATA_QUALITY_RATING_SAMPLE.md** — Overall data quality score (1–100) and how to reach 85+.
+- **DATA_QUALITY_IMPROVEMENTS_RESEARCH.md** — Research and prioritized actions for highest standard.
 - **GAIT_AND_POSE_OPEN_SOURCE.md** — Pose and gait notes (MediaPipe).

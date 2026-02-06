@@ -535,6 +535,9 @@
 </head>
 <body>
 
+<a href="#main" class="skip-link" style="position:absolute;left:-9999px;padding:0.5rem 1rem;background:var(--accent);color:#000;font-weight:600;z-index:9999;border-radius:var(--radius-sm);">Skip to main content</a>
+<style>.skip-link:focus{left:0.5rem;top:0.5rem;}</style>
+
 <nav class="navbar" role="navigation" aria-label="Main">
   <div class="navbar-inner">
     <a class="brand" href="/">Vigil</a>
@@ -565,7 +568,7 @@
   </div>
 </div>
 
-<main>
+<main id="main">
   <section class="live-feed-top" id="liveFeedTop" aria-label="Live feed and overview">
     <div class="live-feed-box">
       <div id="liveActivityFullscreenTarget">

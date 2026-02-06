@@ -24,7 +24,8 @@ This document rates **each collected data point** in the Vigil pipeline **1–10
 |------------|----------------|--------------------------|-----|-------------------------|
 | **timestamp_utc** | 92 | NISTIR 8161 Rev.1: UTC per frame; MISB time codes | No per-frame UTC in export file | Add per-frame or per-segment UTC in MP4 export (timed metadata); NTP in health (done). **Source:** NISTIR 8161, NIST Digital Video Exchange, ONVIF. |
 | **date, time** | 88 | NISTIR 8161; system clock + export UTC | Drift if NTP not used | Document NTP requirement in runbooks; use `/health/ready` time_sync_status. **Source:** NISTIR 8161. |
-| **model_version** | 95 | NIST AI 100-4: AI provenance | — | Already stored per row. Optional: log confidence or model variant. **Source:** NIST AI 100-4. |
+| **model_version** | 95 | NIST AI 100-4: AI provenance | — | Already stored per row. **Source:** NIST AI 100-4. |
+| **detection_confidence** | 95 | NIST AI 100-4: per-detection confidence | — | **Applied:** YOLO confidence for primary person stored per row; in export and verify. **Source:** NIST AI 100-4. |
 | **system_id** | 95 | NISTIR 8161: equipment ID | — | Set via env; in export headers. **Source:** NISTIR 8161. |
 | **integrity_hash** | 95 | SWGDE 23-V-001; OSAC 2024-N-0011 fixity | — | Per-row SHA-256; verify endpoint. Optional: dual-hash for high assurance. **Source:** SWGDE, OSAC. |
 | **camera_id** | 90 | LE/correlation | — | Stable per source; optional label in config. |
@@ -50,13 +51,13 @@ This document rates **each collected data point** in the Vigil pipeline **1–10
 
 | Data point | Current score | Best-in-class reference | Gap | Suggested improvements |
 |------------|----------------|--------------------------|-----|-------------------------|
-| **estimated_height_cm** | 55 | Single-view metrology with calibration (Criminisi; Sciencedirect); reference object | Heuristic 170×ratio; clamp 120–220; calibration optional | Use HEIGHT_REF_CM/HEIGHT_REF_PX per camera (done); document calibration; optional vanishing-point method for metric height. **Source:** Single view metrology (Springer); surveillance height (Sapienza, Sciencedirect). |
+| **estimated_height_cm** | 55→72 | Single-view metrology with calibration (Criminisi; Sciencedirect); reference object | Heuristic 170×ratio; clamp 120–220 | **Applied:** HEIGHT_REF_CM/HEIGHT_REF_PX (done); **HEIGHT_MIN_PX=60** so height only when bbox ≥ 60 px (reduces 120 cm outliers). Document calibration; optional vanishing-point method. **Source:** Single view metrology (Springer); surveillance height (Sapienza, Sciencedirect); IEEE 6233137. |
 | **build** | 40 | Bbox aspect heuristic only | No learned model | Document as heuristic; optional body-shape model if needed for use case. **Source:** Heuristic; no universal LE standard. |
 | **hair_color** | 50 | Dominant color in ROI | Illumination and ROI sensitive | Use consistent ROI (top 25%); optional illuminant normalization. **Source:** Color naming (vision); no formal LE benchmark. |
 | **clothing_description** | 50 | Dominant color lower body | Same as hair | Document as coarse descriptor; sufficient for re-id cues. **Source:** ReID literature. |
 | **perceived_gender** | 50 | NIST FRVT demographics; 224×224; demographic reporting | DeepFace not FRVT-validated; demographic differentials | Resize crop to 224×224 for DeepFace; document “not FRVT-validated”; optional demographic audit (NISTIR 8429). **Source:** NIST FRVT, NISTIR 8280/8429; Gender Shades. |
-| **perceived_age_range** | 48 | Same as gender; resolution and alignment | Same as gender | 224×224 input; face alignment if available; document bands and uncertainty. **Source:** NIST FRVT; DeepFace/InsightFace resolution (arXiv). |
-| **perceived_ethnicity** | 35 | Policy-sensitive; NIST demographic reporting | DeepFace race; opt-in only | If used: report demographic differentials; prefer not for LE without policy. **Source:** NISTIR 8429; policy (CIVILIAN_ETHICS). |
+| **perceived_age** / **perceived_age_range** | 48 | Raw age (int/string); 224×224 | DeepFace not FRVT-validated | 224×224 input; raw model output. **Source:** NIST FRVT; DeepFace/InsightFace resolution (arXiv). |
+| **perceived_ethnicity** | 35 | Raw DeepFace race | DeepFace; stored when extended on | Report demographic differentials if used for high-stakes ID. **Source:** NISTIR 8429; CIVILIAN_ETHICS. |
 | **gait_notes** | 65 | MediaPipe-based; normal/bent_torso/asymmetric | Single-frame only | Keep; optional temporal gait model for richer labels. **Source:** GAIT_AND_POSE_OPEN_SOURCE.md. |
 | **suspicious_behavior / predicted_intent / anomaly_score / threat_score** | 60 | Event-aligned; learned anomaly (SPAN) in research | Heuristics only | Keep event alignment; optional learned anomaly model; document calibration. **Source:** ACCURACY_RESEARCH; temporal anomaly (academic). |
 | **stress_level** | 58 | Emotion-derived; multimodal in research | From emotion only | Keep; optional fuse with audio stress when both present. **Source:** Stress from FER (academic). |

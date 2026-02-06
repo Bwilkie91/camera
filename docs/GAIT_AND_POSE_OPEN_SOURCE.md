@@ -7,6 +7,7 @@ This document summarizes **open-source pose estimation and gait analysis** tools
 ## Current Stack (Vigil)
 
 - **Pose**: MediaPipe Pose — used for standing vs person-down (fall) and basic torso angle.
+- **Fall detection**: "Fall Detected" is emitted only when pose is Person down **and** the person was seen Standing/Walking within the last **FALL_REQUIRE_RECENT_UPRIGHT_SECONDS** (default 90). This reduces false positives when someone is already lying down (e.g. in bed). Set to `0` to always report fall when pose is Person down. See `.env.example`.
 - **Gait**: Stub only — `gait_notes` was fixed to `"normal"`; the app now derives simple posture/symmetry notes from the same pose landmarks when available.
 
 ---

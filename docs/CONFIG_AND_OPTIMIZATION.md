@@ -227,7 +227,7 @@ Env vars for PLAN_90_PLUS and BEST_PATH_FORWARD data-quality and evidence alignm
 | `MOTION_MOG2_VAR_THRESHOLD` | 16 | MOG2 varThreshold (4–64) when `MOTION_BACKEND=mog2`. |
 | `ENFORCE_HTTPS` | 0 | `1` = redirect HTTP→HTTPS; `reject` = return 403 for non-HTTPS (Phase 3.2). |
 
-Also: `EMOTION_MIN_CROP_SIZE`, `POSE_MIN_CROP_SIZE`, `LINE_CROSS_DEBOUNCE_CYCLES`, `HEIGHT_REF_CM`, `HEIGHT_REF_PX`, `MOTION_BACKEND`, `MOTION_THRESHOLD`. Full list in **docs/DATA_COLLECTION_RESEARCH.md** §5.
+Also: `EMOTION_MIN_CROP_SIZE`, `POSE_MIN_CROP_SIZE`, `LINE_CROSS_DEBOUNCE_CYCLES`, `HEIGHT_REF_CM`, `HEIGHT_REF_PX`, `HEIGHT_MIN_PX` (default 60; min bbox height for estimated_height_cm), `MOTION_BACKEND`, `MOTION_THRESHOLD`. Full list in **docs/DATA_COLLECTION_RESEARCH.md** §5.
 
 ---
 

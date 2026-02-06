@@ -1015,6 +1015,7 @@ def _init_schema(c):
         "ALTER TABLE ai_data ADD COLUMN anomaly_score REAL",
         "ALTER TABLE ai_data ADD COLUMN attention_region TEXT",
         "ALTER TABLE ai_data ADD COLUMN perceived_ethnicity TEXT",
+        "ALTER TABLE ai_data ADD COLUMN perceived_age INTEGER",
         "ALTER TABLE ai_data ADD COLUMN audio_transcription TEXT",
         "ALTER TABLE ai_data ADD COLUMN audio_emotion TEXT",
         "ALTER TABLE ai_data ADD COLUMN audio_stress_level TEXT",
@@ -1039,6 +1040,7 @@ def _init_schema(c):
         "ALTER TABLE ai_data ADD COLUMN centroid_ny REAL",
         "ALTER TABLE ai_data ADD COLUMN world_x REAL",
         "ALTER TABLE ai_data ADD COLUMN world_y REAL",
+        "ALTER TABLE ai_data ADD COLUMN detection_confidence REAL",
     ):
         try:
             c.execute(sql)
@@ -1072,19 +1074,23 @@ def _yolo_model_version():
     """AI model identifier for provenance (NIST AI 100-4)."""
     return os.environ.get('YOLO_MODEL', os.environ.get('YOLO_WEIGHTS', 'yolov8n.pt'))
 
+def _is_personal_use():
+    """When set, disables ethical/compliance gates: always full collection, no DPIA reminder, no minimal preset."""
+    return os.environ.get('PERSONAL_USE', '').strip().lower() in ('1', 'true', 'yes')
+
 # Canonical column order for ai_data integrity hash (reproducible verification).
 _AI_DATA_HASH_ORDER = (
     'timestamp_utc', 'date', 'time', 'camera_id', 'system_id', 'model_version',
     'event', 'object', 'individual', 'facial_features', 'pose', 'emotion', 'scene',
     'license_plate', 'crowd_count', 'audio_event', 'device_mac', 'thermal_signature',
-    'perceived_gender', 'perceived_age_range', 'hair_color', 'estimated_height_cm', 'build',
+    'perceived_gender', 'perceived_age_range', 'perceived_age', 'hair_color', 'estimated_height_cm', 'build',
     'intoxication_indicator', 'drug_use_indicator', 'suspicious_behavior', 'predicted_intent',
     'stress_level', 'micro_expression', 'gait_notes', 'clothing_description',
     'threat_score', 'anomaly_score', 'attention_region', 'illumination_band', 'period_of_day_utc', 'centroid_nx', 'centroid_ny', 'world_x', 'world_y', 'perceived_ethnicity',
     'audio_transcription', 'audio_emotion', 'audio_stress_level', 'audio_speaker_gender', 'audio_speaker_age_range',
     'audio_intoxication_indicator', 'audio_sentiment', 'audio_energy_db', 'audio_background_type',
     'audio_threat_score', 'audio_anomaly_score', 'audio_speech_rate', 'audio_language', 'audio_keywords',
-    'device_oui_vendor', 'device_probe_ssids', 'zone_presence', 'face_match_confidence',
+    'device_oui_vendor', 'device_probe_ssids', 'zone_presence', 'face_match_confidence', 'detection_confidence',
 )
 
 # Canonical column order for ai_data CSV/export (matches standard schema header).
@@ -1092,14 +1098,14 @@ AI_DATA_EXPORT_COLUMNS = (
     'date', 'time', 'individual', 'facial_features', 'object', 'pose', 'emotion', 'scene',
     'license_plate', 'event', 'crowd_count', 'audio_event', 'device_mac', 'thermal_signature',
     'camera_id', 'timestamp_utc', 'model_version', 'system_id', 'integrity_hash',
-    'perceived_gender', 'perceived_age_range', 'hair_color', 'estimated_height_cm', 'build',
+    'perceived_gender', 'perceived_age_range', 'perceived_age', 'hair_color', 'estimated_height_cm', 'build',
     'intoxication_indicator', 'drug_use_indicator', 'suspicious_behavior', 'predicted_intent',
     'stress_level', 'micro_expression', 'gait_notes', 'clothing_description',
     'threat_score', 'anomaly_score', 'attention_region', 'illumination_band', 'period_of_day_utc', 'centroid_nx', 'centroid_ny', 'world_x', 'world_y', 'perceived_ethnicity',
     'audio_transcription', 'audio_emotion', 'audio_stress_level', 'audio_speaker_gender', 'audio_speaker_age_range',
     'audio_intoxication_indicator', 'audio_sentiment', 'audio_energy_db', 'audio_background_type',
     'audio_threat_score', 'audio_anomaly_score', 'audio_speech_rate', 'audio_language', 'audio_keywords',
-    'device_oui_vendor', 'device_probe_ssids', 'zone_presence', 'face_match_confidence',
+    'device_oui_vendor', 'device_probe_ssids', 'zone_presence', 'face_match_confidence', 'detection_confidence',
 )
 
 def _ai_data_integrity_hash(data):
@@ -1178,10 +1184,14 @@ _ai_pipeline_state = {
 
 # Temporal consistency (research: reduce false positives — require 2 of last 3 frames to agree)
 _event_history = deque(maxlen=3)
+_pose_history = deque(maxlen=5)   # pose temporal smoothing (majority vote) to reduce Standing <-> Person down jitter
+_scene_history = deque(maxlen=5)  # scene temporal smoothing so Indoor/Outdoor does not flip every frame
 # Event deduplication: same (event_type, camera_id) within 5s not re-inserted
 _LAST_EVENT_DEDUPE_SEC = 5
 _last_event_insert = {}  # (ev_type, camera_id) -> unix timestamp
 _last_motion_time = 0.0  # for idle-skip: last time motion was detected
+# Fall detection: only emit "Fall Detected" if person was upright recently (reduces "in bed" false positives)
+_last_upright_pose_time = {}  # camera_id -> time.time() when last seen Standing/Walking
 
 # Optional audio (PyAudio + SpeechRecognition) — extended: transcription + energy, duration for analysis
 def _env_audio_enabled():
@@ -2228,10 +2238,11 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
     """
     out = {}
     enable_extended = os.environ.get('ENABLE_EXTENDED_ATTRIBUTES', '1').strip().lower() in ('1', 'true', 'yes')
-    enable_sensitive = os.environ.get('ENABLE_SENSITIVE_ATTRIBUTES', '0').strip().lower() in ('1', 'true', 'yes')
+    # Raw demographics: no bias engineering; age/gender/race stored as model output (civilian-only).
 
     # Person bbox: use same primary person as centroid (largest by area) for consistent height/hair/clothing
     person_bbox = None
+    best_idx = None
     if results and results[0].boxes and hasattr(results[0], 'names'):
         names, boxes = results[0].names, results[0].boxes
         best_area = 0
@@ -2242,7 +2253,15 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
             area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
             if area > best_area:
                 best_area = area
+                best_idx = i
                 person_bbox = (int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3]))
+    # Detection confidence (NIST AI 100-4 provenance): YOLO confidence for primary person
+    if best_idx is not None and results and results[0].boxes and hasattr(results[0].boxes, 'conf'):
+        try:
+            conf = results[0].boxes.conf[best_idx].item()
+            out['detection_confidence'] = round(float(conf), 4)
+        except (IndexError, TypeError):
+            pass
 
     if person_bbox:
         x1, y1, x2, y2 = person_bbox
@@ -2257,7 +2276,11 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
             ref_cm = 170
             ref_px_env = ''
         ref_px = int(ref_px_env) if ref_px_env else max(100, frame_h * 0.45)
-        if bh >= 30:
+        try:
+            min_px = int(os.environ.get('HEIGHT_MIN_PX', '60'))
+        except (TypeError, ValueError):
+            min_px = 60
+        if bh >= max(30, min_px):
             out['estimated_height_cm'] = int(ref_cm * (bh / ref_px))
             out['estimated_height_cm'] = max(120, min(220, out['estimated_height_cm']))
         # Build from aspect: width/height of bbox (wider = heavier)
@@ -2383,13 +2406,10 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
     else:
         out['attention_region'] = 'unknown'
 
-    # DeepFace: age, gender (and optionally race) when enabled - single call for speed
-    # PLAN_90_PLUS: resize to 224x224 for age/gender path (NIST FRVT, ISO 30137-1; improves accuracy)
+    # DeepFace: raw age, gender, race — no bucketing or gating; single call for speed
     if enable_extended and frame is not None and frame.size > 0:
         try:
-            actions = ['age', 'gender']
-            if enable_sensitive:
-                actions.append('race')
+            actions = ['age', 'gender', 'race']
             if DEEPFACE_AVAILABLE and DeepFace:
                 crop = frame
                 if person_bbox:
@@ -2400,7 +2420,6 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
                     x2, y2 = min(w, x2 + pad), min(h, y2 + pad)
                     if x2 > x1 and y2 > y1 and (y2 - y1) >= 40:
                         crop = frame[y1:y2, x1:x2]
-                # Target 224x224 for age/gender (enterprise 90+ plan; NIST FRVT / ISO 30137-1)
                 if crop is not None and crop.size > 0:
                     ch, cw = crop.shape[:2]
                     if cw != 224 or ch != 224:
@@ -2416,17 +2435,9 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
                         out['perceived_gender'] = df_out['dominant_gender']
                     if 'age' in df_out:
                         age = int(df_out['age'])
-                        if age < 18:
-                            out['perceived_age_range'] = '0-17'
-                        elif age < 30:
-                            out['perceived_age_range'] = '18-29'
-                        elif age < 45:
-                            out['perceived_age_range'] = '30-44'
-                        elif age < 60:
-                            out['perceived_age_range'] = '45-59'
-                        else:
-                            out['perceived_age_range'] = '60+'
-                    if enable_sensitive and 'dominant_race' in df_out:
+                        out['perceived_age'] = age
+                        out['perceived_age_range'] = str(age)
+                    if 'dominant_race' in df_out:
                         out['perceived_ethnicity'] = df_out['dominant_race']
         except Exception:
             pass
@@ -2435,9 +2446,12 @@ def _extract_extended_attributes(frame, results, pose, emotion, event, results_p
         out['perceived_gender'] = None
     if not out.get('perceived_age_range'):
         out['perceived_age_range'] = None
-    if not enable_sensitive:
+    if 'perceived_age' not in out:
+        out['perceived_age'] = None
+    if not out.get('perceived_ethnicity'):
         out['perceived_ethnicity'] = None
-
+    if 'detection_confidence' not in out:
+        out['detection_confidence'] = None
     return out
 
 
@@ -2710,7 +2724,7 @@ def _update_pipeline_state(step, message, detail=None, confidence=None):
 
 
 def analyze_frame():
-    global is_recording, _event_history, _last_event_insert, _last_motion_time
+    global is_recording, _event_history, _pose_history, _scene_history, _last_event_insert, _last_motion_time, _last_upright_pose_time
     while True:
         try:
             if is_recording:
@@ -2774,10 +2788,22 @@ def analyze_frame():
                                             pose = _pose_label_from_landmarks(results_pose)
                         if pose in ('Standing', 'Walking') and _detect_person_down(frame, results, results_pose):
                             pose = 'Person down'
+                    # Pose temporal smoothing: require 2 of last 3 frames to agree (reduce Standing <-> Person down jitter)
+                    _pose_history.append(pose)
+                    if len(_pose_history) >= 3:
+                        recent_pose = list(_pose_history)[-3:]
+                        pose_counts = Counter(recent_pose)
+                        maj = pose_counts.most_common(1)[0]
+                        if maj[1] >= 2:
+                            pose = maj[0]
+                    # Track last time we saw upright (for fall false-positive reduction: "in bed" vs real fall)
+                    _analysis_camera_id = '0'
+                    if pose in ('Standing', 'Walking'):
+                        _last_upright_pose_time[_analysis_camera_id] = time.time()
                     _update_pipeline_state('pose', 'Pose: %s' % pose, pose, None)
 
                     cfg_early = _recording_config
-                    if cfg_early.get('ai_detail') == 'minimal':
+                    if not _is_personal_use() and cfg_early.get('ai_detail') == 'minimal':
                         emotion = 'Unknown'
                         license_plate = None
                         scene = 'Unknown'
@@ -2795,6 +2821,14 @@ def analyze_frame():
                         scene_var = float(np.var(lower_half)) if lower_half.size else 0
                         var_max = max(1000, min(20000, int(os.environ.get('SCENE_VAR_MAX_INDOOR', '5000'))))
                         scene = 'Indoor' if (scene_mean < 100 and scene_var < var_max) else 'Outdoor'
+                        # Scene temporal smoothing: 2 of last 3 frames to reduce Indoor/Outdoor jitter
+                        _scene_history.append(scene)
+                        if len(_scene_history) >= 3:
+                            recent_scene = list(_scene_history)[-3:]
+                            scene_counts = Counter(recent_scene)
+                            maj_s = scene_counts.most_common(1)[0]
+                            if maj_s[1] >= 2:
+                                scene = maj_s[0]
                         license_plate = lpr_on_vehicle_roi(frame, results)
                         _update_pipeline_state('scene', 'Scene: %s' % scene, scene, None)
 
@@ -2821,9 +2855,16 @@ def analyze_frame():
                         event = 'Motion Detected'
                     else:
                         event = 'None'
+                    # Only emit Fall Detected if person was upright recently (avoids "in bed" false positives)
                     if pose == 'Person down':
-                        raw_event = 'fall'
-                        event = 'Fall Detected'
+                        try:
+                            fall_require_sec = max(0, int(os.environ.get('FALL_REQUIRE_RECENT_UPRIGHT_SECONDS', '90')))
+                        except (TypeError, ValueError):
+                            fall_require_sec = 90
+                        last_upright = _last_upright_pose_time.get(_analysis_camera_id, 0)
+                        if fall_require_sec == 0 or (time.time() - last_upright) <= fall_require_sec:
+                            raw_event = 'fall'
+                            event = 'Fall Detected'
                     _update_pipeline_state('motion', 'Event: %s' % event, event, None)
 
                     _ptz_auto_follow_from_bbox(frame, results)
@@ -2909,7 +2950,7 @@ def analyze_frame():
                         for k in list(data.keys()):
                             if k.startswith('audio_'):
                                 data[k] = data.get(k) if k == 'audio_event' else None
-                    extended = _extract_extended_attributes(frame, results, pose, emotion, event, results_pose=results_pose) if cfg.get('ai_detail') == 'full' else {}
+                    extended = _extract_extended_attributes(frame, results, pose, emotion, event, results_pose=results_pose) if (_is_personal_use() or cfg.get('ai_detail') == 'full') else {}
                     for k, v in extended.items():
                         if v is not None and (k not in data or data.get(k) is None):
                             data[k] = v
@@ -2917,7 +2958,7 @@ def analyze_frame():
                         _apply_predictive_threat(data, event, timestamp_utc)
                     _apply_watchlist(frame, data, results)
                     _maybe_capture_notable(frame, data, event, data.get('camera_id') or '0', None, timestamp_utc)
-                    if cfg.get('ai_detail') == 'minimal':
+                    if not _is_personal_use() and cfg.get('ai_detail') == 'minimal':
                         minimal_keys = ('date', 'time', 'event', 'object', 'camera_id', 'timestamp_utc')
                         data = {k: data.get(k) for k in minimal_keys if k in data}
                         for k in list(data.keys()):
@@ -2963,7 +3004,9 @@ def analyze_frame():
                                     'hair_color': data.get('hair_color'),
                                     'estimated_height_cm': data.get('estimated_height_cm'),
                                     'perceived_age_range': data.get('perceived_age_range'),
+                                    'perceived_age': data.get('perceived_age'),
                                     'perceived_gender': data.get('perceived_gender'),
+                                    'perceived_ethnicity': data.get('perceived_ethnicity'),
                                     'attention_region': data.get('attention_region'),
                                     'gait_notes': data.get('gait_notes'),
                                     'illumination_band': data.get('illumination_band'),
@@ -3406,7 +3449,7 @@ def api_v1_system_status():
     except (TypeError, ValueError):
         retention_days = 0
     cfg = _recording_config
-    ai_detail = cfg.get('ai_detail') or 'full'
+    ai_detail = 'full' if _is_personal_use() else (cfg.get('ai_detail') or 'full')
     feature_flags = {
         'audio_capture': bool(cfg.get('capture_audio') and AUDIO_AVAILABLE),
         'lpr': ai_detail != 'minimal',
@@ -3429,7 +3472,7 @@ def api_v1_system_status():
         'audio_available': AUDIO_AVAILABLE,
         'enable_audio_env': os.environ.get('ENABLE_AUDIO', '1').strip(),
         'feature_flags': feature_flags,
-        'privacy_preset': _analytics_config.get('privacy_preset', 'full'),
+        'privacy_preset': 'full' if _is_personal_use() else _analytics_config.get('privacy_preset', 'full'),
         'home_away_mode': _analytics_config.get('home_away_mode', 'away'),
     }
     if storage_free_bytes is not None:
@@ -3447,10 +3490,10 @@ def api_v1_what_we_collect():
     except (TypeError, ValueError):
         retention_days = 0
     cfg = _recording_config
-    ai_detail = cfg.get('ai_detail') or 'full'
+    ai_detail = 'full' if _is_personal_use() else (cfg.get('ai_detail') or 'full')
     lpr_on = ai_detail != 'minimal'
     emotion_face_on = ai_detail != 'minimal'
-    dpia_recommended = lpr_on or emotion_face_on
+    dpia_recommended = False if _is_personal_use() else (lpr_on or emotion_face_on)
     extended_on = os.environ.get('ENABLE_EXTENDED_ATTRIBUTES', '1').strip().lower() in ('1', 'true', 'yes')
     out = {
         'video': True,
@@ -3464,13 +3507,13 @@ def api_v1_what_we_collect():
         'wifi_presence': bool(cfg.get('capture_wifi')),
         'thermal': bool(cfg.get('capture_thermal')),
         'retention_days': retention_days,
-        'privacy_preset': _analytics_config.get('privacy_preset', 'full'),
+        'privacy_preset': 'full' if _is_personal_use() else _analytics_config.get('privacy_preset', 'full'),
         'dpia_recommended': dpia_recommended,
         'docs_privacy': 'docs/CIVILIAN_ETHICS_AUDIT_AND_FEATURES.md',
         'docs_research': 'docs/RESEARCH_MILITARY_CIVILIAN_ACADEMIC_LE.md',
     }
-    if dpia_recommended and extended_on:
-        out['face_attributes_note'] = 'Perceived age/gender are not NIST FRVT-validated; may show demographic differentials (NISTIR 8429).'
+    if extended_on and not _is_personal_use():
+        out['face_attributes_note'] = 'Age, gender, and ethnicity are raw model outputs (no bucketing or gating). Not NIST FRVT-validated; may show demographic differentials (NISTIR 8429).'
     return jsonify(out)
 
 
@@ -3617,7 +3660,7 @@ def api_stream():
 def api_v1_notable_screenshots():
     """List notable behavior screenshots (reason, timestamp, file_path). Query: limit, camera_id, reason, since (ISO date or datetime)."""
     from flask import request
-    limit = min(int(request.args.get('limit', 50)), 200)
+    limit = _api_limit(50, 200)
     camera_id = request.args.get('camera_id')
     reason = request.args.get('reason')
     since = request.args.get('since')
@@ -3744,8 +3787,10 @@ def recording_config():
             _recording_config['capture_thermal'] = bool(data['capture_thermal'])
         if 'capture_wifi' in data:
             _recording_config['capture_wifi'] = bool(data['capture_wifi'])
-        if data.get('ai_detail') in ('minimal', 'full'):
+        if data.get('ai_detail') in ('minimal', 'full') and not _is_personal_use():
             _recording_config['ai_detail'] = data['ai_detail']
+        elif _is_personal_use():
+            _recording_config['ai_detail'] = 'full'
         try:
             _audit(session.get('username'), 'recording_config', 'config', str(_recording_config))
         except Exception:
@@ -4292,6 +4337,28 @@ def _audit_saved_search_run_if_requested():
         pass
 
 
+def _api_limit(default: int, max_cap: int, from_request=None):
+    """Safe limit from request args or JSON: clamp to [1, max_cap]. Use for search, notable_screenshots, audit, etc."""
+    req = from_request or request
+    val = req.args.get('limit') if req.method == 'GET' else (req.get_json(silent=True) or {}).get('limit')
+    if val is None:
+        return min(default, max_cap)
+    try:
+        n = int(val)
+        return max(1, min(n, max_cap))
+    except (TypeError, ValueError):
+        return min(default, max_cap)
+
+
+def _parse_date_yyyymmdd(s):
+    """Return s if it looks like YYYY-MM-DD (10 chars, digits in right places), else None."""
+    if not s or len(s) != 10:
+        return None
+    if s[:4].isdigit() and s[5:7].isdigit() and s[8:10].isdigit() and s[4] == '-' and s[7] == '-':
+        return s
+    return None
+
+
 def _parse_filters():
     """Parse and validate common query params for get_data and list_events. Canonical API validation: limit (cap 1000), offset (≥0), date_from/date_to (YYYY-MM-DD). See docs/APP_REVIEW_AND_RATING.md."""
     try:
@@ -4304,16 +4371,8 @@ def _parse_filters():
     except (TypeError, ValueError):
         offset = 0
     offset = max(0, offset)
-    date_from = request.args.get('date_from')
-    date_to = request.args.get('date_to')
-    if date_from and len(date_from) == 10 and date_from[:4].isdigit() and date_from[5:7].isdigit() and date_from[8:10].isdigit():
-        pass
-    else:
-        date_from = None
-    if date_to and len(date_to) == 10 and date_to[:4].isdigit() and date_to[5:7].isdigit() and date_to[8:10].isdigit():
-        pass
-    else:
-        date_to = None
+    date_from = _parse_date_yyyymmdd(request.args.get('date_from'))
+    date_to = _parse_date_yyyymmdd(request.args.get('date_to'))
     return limit, offset, date_from, date_to
 
 
@@ -4551,6 +4610,7 @@ def _search_impl(q: str, limit: int, date_from=None, date_to=None, camera_id=Non
                     OR COALESCE(suspicious_behavior,'') LIKE ? OR COALESCE(predicted_intent,'') LIKE ?
                     OR COALESCE(stress_level,'') LIKE ? OR COALESCE(hair_color,'') LIKE ? OR COALESCE(build,'') LIKE ?
                     OR COALESCE(perceived_gender,'') LIKE ? OR COALESCE(perceived_age_range,'') LIKE ?
+                    OR COALESCE(perceived_age,'') LIKE ? OR COALESCE(perceived_ethnicity,'') LIKE ?
                     OR COALESCE(clothing_description,'') LIKE ? OR COALESCE(gait_notes,'') LIKE ?
                     OR COALESCE(intoxication_indicator,'') LIKE ? OR COALESCE(micro_expression,'') LIKE ?
                     OR COALESCE(attention_region,'') LIKE ? OR COALESCE(illumination_band,'') LIKE ? OR COALESCE(period_of_day_utc,'') LIKE ?
@@ -4560,8 +4620,9 @@ def _search_impl(q: str, limit: int, date_from=None, date_to=None, camera_id=Non
                     OR COALESCE(audio_sentiment,'') LIKE ? OR COALESCE(audio_emotion,'') LIKE ?
                     OR COALESCE(audio_stress_level,'') LIKE ? OR COALESCE(audio_keywords,'') LIKE ?
                     OR COALESCE(device_mac,'') LIKE ? OR COALESCE(device_oui_vendor,'') LIKE ?
-                    OR COALESCE(device_probe_ssids,'') LIKE ?"""
-        ad_params = [like] * 28
+                    OR COALESCE(device_probe_ssids,'') LIKE ?
+                    OR CAST(detection_confidence AS TEXT) LIKE ?"""
+        ad_params = [like] * 34
         if date_from:
             ad_sql += ' AND date >= ?'
             ad_params.append(date_from)
@@ -4616,17 +4677,17 @@ def api_v1_search():
     """Natural-language / keyword search over events and ai_data. GET: q, date_from, date_to, camera_id, event_type, limit."""
     if request.method == 'GET':
         q = (request.args.get('q') or request.args.get('query') or '').strip()
-        limit = min(int(request.args.get('limit', 50)), 200)
-        date_from = request.args.get('date_from')
-        date_to = request.args.get('date_to')
+        limit = _api_limit(50, 200)
+        date_from = _parse_date_yyyymmdd(request.args.get('date_from'))
+        date_to = _parse_date_yyyymmdd(request.args.get('date_to'))
         camera_id = request.args.get('camera_id') or None
         event_type = request.args.get('event_type') or None
     else:
         data = request.get_json() or {}
         q = (data.get('q') or data.get('query') or '').strip()
-        limit = min(int(data.get('limit', 50)), 200)
-        date_from = data.get('date_from') or request.args.get('date_from')
-        date_to = data.get('date_to') or request.args.get('date_to')
+        limit = _api_limit(50, 200, request)
+        date_from = _parse_date_yyyymmdd(data.get('date_from') or request.args.get('date_from'))
+        date_to = _parse_date_yyyymmdd(data.get('date_to') or request.args.get('date_to'))
         camera_id = data.get('camera_id') or request.args.get('camera_id')
         event_type = data.get('event_type') or request.args.get('event_type')
     if not q:
@@ -5463,7 +5524,7 @@ def get_audit_log():
     """List audit log. ?mine=1 or user_id=me: any authenticated user sees only their entries (My access history). Else admin sees all."""
     if not session.get('user_id'):
         return jsonify({'error': 'Login required'}), 401
-    limit = min(int(request.args.get('limit', 100)), 500)
+    limit = _api_limit(100, 500)
     mine = request.args.get('mine') == '1' or request.args.get('user_id', '').strip().lower() == 'me'
     uid = session.get('user_id')
     if mine and uid:
@@ -5486,7 +5547,7 @@ def export_audit_log():
         system_id = os.environ.get('SYSTEM_ID') or platform.node() or 'surveillance'
     except Exception:
         system_id = 'surveillance'
-    limit = min(int(request.args.get('limit', 10000)), 50000)
+    limit = _api_limit(10000, 50000)
     try:
         get_cursor().execute('SELECT id, user_id, action, resource, timestamp, details, integrity_hash FROM audit_log ORDER BY id ASC LIMIT ?', (limit,))
         rows = get_cursor().fetchall()
@@ -5555,8 +5616,11 @@ def update_config():
             updates['loiter_seconds'] = int(updates['loiter_seconds'])
         except (TypeError, ValueError):
             return jsonify({'success': False, 'error': 'loiter_seconds must be integer'}), 400
-    if 'privacy_preset' in updates and updates['privacy_preset'] not in ('minimal', 'full'):
-        updates['privacy_preset'] = _analytics_config.get('privacy_preset', 'full')
+    if 'privacy_preset' in updates:
+        if _is_personal_use():
+            updates['privacy_preset'] = 'full'
+        elif updates['privacy_preset'] not in ('minimal', 'full'):
+            updates['privacy_preset'] = _analytics_config.get('privacy_preset', 'full')
     if 'home_away_mode' in updates and updates['home_away_mode'] not in ('home', 'away'):
         updates['home_away_mode'] = _analytics_config.get('home_away_mode', 'away')
     for k in ('recording_signage_reminder', 'privacy_policy_url'):

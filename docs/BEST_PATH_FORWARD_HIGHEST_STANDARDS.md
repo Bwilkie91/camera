@@ -23,7 +23,7 @@ Additional standards and concepts from **military, civilian, academic, and law e
 
 | # | Action | Outcome |
 |---|--------|--------|
-| 1.1 | Set **ENABLE_EXTENDED_ATTRIBUTES=1** (and **ENABLE_GAIT_NOTES=1** if desired). | `perceived_gender`, `perceived_age_range`, and related fields populate when a face is detected; log identity score rises. |
+| 1.1 | Set **ENABLE_EXTENDED_ATTRIBUTES=1** (and **ENABLE_GAIT_NOTES=1** if desired). | Raw `perceived_age`, `perceived_age_range`, `perceived_gender`, `perceived_ethnicity`, and related fields populate when a face is detected; log identity score rises. |
 | 1.2 | Ensure person/face crop is usable: check resolution and lighting for cameras. | Reduces “Neutral” default when face is too small or dark (see ACCURACY_RESEARCH: 48×48 min, 224×224 for DeepFace). |
 | 1.3 | Add **homography** per camera (`config/homography.json`) for sites that need floor-plane mapping. | `world_x`, `world_y` fill; scene/mapping score and heatmaps improve. |
 | 1.4 | Configure **loiter zones** and **crossing lines** in camera/site config where behavior analytics matter. | Loiter/line-cross events and threat/anomaly alignment; behavior score rises. |
@@ -107,7 +107,7 @@ Additional standards and concepts from **military, civilian, academic, and law e
 
 **Best path:** Complete Phase 1, then Phase 2, then Phase 3. Phase 4 when pursuing maximum alignment or next-gen features.
 
-**Implementation status:** Many Phase 1–3 and several Phase 4 items are implemented (legal hold, fixity, HTTPS reject, OSAC image_type, DPIA/redaction docs, emotion CLAHE, scene variance, centroid smoothing, 224×224 age/gender, threat/event alignment, FRVT disclaimer, and more). See **[STANDARDS_APPLIED.md](STANDARDS_APPLIED.md)** for the full list and **[PLAN_90_PLUS_DATA_POINTS.md](PLAN_90_PLUS_DATA_POINTS.md)** for the data-quality roadmap.
+**Implementation status:** Best path applied to highest levels. Phase 1–3 and key Phase 4 items are implemented (legal hold, fixity, HTTPS reject, OSAC image_type, DPIA/redaction docs, emotion CLAHE, scene variance, centroid smoothing, 224×224 age/gender, threat/event alignment, FRVT disclaimer). Frontend: WCAG 2.4.1 skip-to-main on React, legacy, and Dash; focus return on modal close (React). See **[STANDARDS_APPLIED.md](STANDARDS_APPLIED.md)** for the full list, **[FRONTEND_UX_UI_ENTERPRISE_AUDIT.md](FRONTEND_UX_UI_ENTERPRISE_AUDIT.md)** for UX/UI gaps and P0/P1, and **[PLAN_90_PLUS_DATA_POINTS.md](PLAN_90_PLUS_DATA_POINTS.md)** for the data-quality roadmap.
 
 ---
 
